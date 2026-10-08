@@ -1,0 +1,57 @@
+# Discrete Modules Contributor Guide
+
+## Product
+
+Discrete Modules is a browser-based learning application for discrete mathematics. Its guiding metaphor is a campus gym: a student selects a module (a workout station), learns from a written lesson or recorded demonstration, practices with problems, and receives immediate feedback with the correct answer when needed.
+
+The current core experience includes:
+
+- Students can browse and select discrete-math modules.
+- Modules provide written and recorded lesson content; written content supports Markdown and MathJax-rendered LaTeX.
+- Students submit quiz answers and receive immediate correct/incorrect feedback and the correct answer.
+- The UI is intuitive without training, moves naturally from lessons to quizzes, and provides previous/next navigation where appropriate.
+
+Future work with the application includes UNC Onyen authentication, persistent progress, administrator content management, and AI tutoring or problem generation. Onyen authentication must protect progress data, administrators must be able to manage content without source-code edits, and AI work must stay within UNC's token budget.
+
+## Architecture
+
+This is a monorepo with these ownership boundaries:
+
+- `frontend/`: React and TypeScript client application.
+- `backend/`: Python FastAPI API, including schemas, models, services, and tests.
+- `content/`: Markdown lessons and quiz content.
+- `deploy/`: OpenShift manifests for UNC Cloud Apps.
+
+The selected platform is React, FastAPI, PostgreSQL, and UNC Cloud Apps (OpenShift). React supports reusable, responsive learning interfaces; FastAPI keeps the API boundary explicit and supplies generated API documentation; PostgreSQL preserves relationships and data integrity for modules, quizzes, and future progress records. Use MathJax for mathematical rendering. Keep the client, API, database, content, and deployment concerns separate.
+
+## Development rules
+
+- Work from an issue on a dedicated branch, open a PR, and do not push directly to protected `main`.
+- Make one conventional commit per task, such as `feat: add module navigation` or `fix: validate quiz answer`; mention the related issue in the commit description.
+- Keep changes small, clean, and organized. Apply KISS and DRY: prefer the simplest clear design, and extract shared behavior only when it has a real, stable reuse case.
+- Comments explain a design decision or constraint, never restate code or process history. Do not use agent-oriented terminology in comments or documentation.
+- Reuse React components and model state explicitly. Consult the relevant library documentation before adding or configuring dependencies.
+- Format and lint Python with Black and its configured linter; resolve all findings before committing. Lint and format React/TSX with ESLint; resolve all findings before committing.
+- Test every change locally. Add focused tests for behavior changes and run the relevant package's complete test, lint, and build checks before opening a PR.
+- Give advance notice when unavailable or at risk of missing a deadline; share a useful update and ask for help early. Be respectful.
+
+## Local commands
+
+Run backend commands from `backend/`:
+
+```sh
+uv sync --locked
+uv run pytest
+uv run uvicorn src.main:app --reload
+```
+
+Run frontend commands from `frontend/`:
+
+```sh
+npm ci
+npm run lint
+npm run build
+npm run dev
+```
+
+The FastAPI development server is available at `http://localhost:8000`; its API documentation is at `/docs`. The Vite development server normally uses `http://localhost:5173`.
