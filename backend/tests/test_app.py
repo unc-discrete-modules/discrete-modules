@@ -16,5 +16,8 @@ def test_app_loads_environment_settings(monkeypatch):
 
     app = create_app()
 
-    assert app.state.settings.database_url == "postgresql://localhost/discrete_modules"
+    assert (
+        app.state.settings.database_url
+        == "postgresql+psycopg://localhost/discrete_modules"
+    )
     assert app.state.settings.allowed_origins == ["http://localhost:5173"]

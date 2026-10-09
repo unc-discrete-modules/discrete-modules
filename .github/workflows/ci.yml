@@ -49,7 +49,7 @@ jobs:
       run:
         working-directory: backend
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/discrete_modules
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/discrete_modules
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
@@ -57,6 +57,8 @@ jobs:
         with:
           python-version: '3.13'
       - run: uv sync --locked
+      - run: uv run alembic upgrade head
+      - run: uv run alembic check
       - run: uv run ruff check .
       - run: uv run pytest
 
