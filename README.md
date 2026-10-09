@@ -34,15 +34,14 @@ in the ignored `.env` file, never in version control.
 
 ### Database commands
 
-Run migrations from the backend service. The seed command will become available
-with the database-content work:
+Run migrations from the backend service:
 
 ```sh
 docker compose exec backend uv run alembic upgrade head
-docker compose exec backend uv run python -m src.seed
 ```
 
-The project includes Alembic migrations; it does not yet include a seed script.
+The project includes Alembic migrations. Database seed data will be added with
+the database-content work.
 
 ### Tests and checks
 

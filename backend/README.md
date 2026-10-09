@@ -48,6 +48,26 @@ uv run alembic revision --autogenerate -m "describe the schema change"
 Review every generated revision before applying it. Alembic reads
 `DATABASE_URL`; it does not store credentials in `alembic.ini`.
 
+## Application database sessions
+
+Use `get_db_session` as a FastAPI dependency for one SQLModel session per
+request. FastAPI closes the session after the response:
+
+```python
+from typing import Annotated
+
+from fastapi import Depends
+from sqlmodel import Session
+
+from src.database import get_db_session
+
+DbSession = Annotated[Session, Depends(get_db_session)]
+```
+
+The shared engine is created lazily from `DATABASE_URL`, so routes that do not
+use the database can still start without database configuration. Tests can
+override `get_db_session` through `app.dependency_overrides`.
+
 ## Tests
 
 ```sh
@@ -61,6 +81,7 @@ Dependencies are pinned in `pyproject.toml`, with transitive versions in `uv.loc
 
 - `src/main.py`: app construction and ASGI entry point
 - `src/config.py`: environment settings
+- `src/database.py`: shared engine and request-scoped session dependency
 - `src/routers/`: HTTP routes
 - `src/schemas/`: request and response schemas
 - `src/models/`: database models
