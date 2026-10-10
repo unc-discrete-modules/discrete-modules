@@ -13,6 +13,8 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-install-project --no-dev
 
 COPY src ./src
+COPY alembic.ini ./
+COPY migrations ./migrations
 
 FROM python:3.13-slim AS development
 COPY --from=uv /uv /uvx /usr/local/bin/

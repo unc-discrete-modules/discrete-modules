@@ -73,4 +73,4 @@ npm run build
 npm run dev
 ```
 
-The FastAPI development server is available at `http://localhost:8000`; its API documentation is at `/docs`. The Vite development server normally uses `http://localhost:5173`.
+The FastAPI development server is available at `http://localhost:8000`; its API documentation is at `/api/docs`. The Vite development server normally uses `http://localhost:5173`.
