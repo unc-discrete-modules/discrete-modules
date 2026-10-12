@@ -2,7 +2,6 @@
 
 from src.models import QuestionType
 from src.schemas.lesson import Lesson
-from src.schemas.module import LessonSummary, Module
 from src.schemas.quiz import (
     AnswerOption,
     FillInBlankQuestion,
@@ -34,27 +33,7 @@ LESSONS = {
     3: Lesson(id=3, title="Set basics", body="A set is an unordered collection."),
 }
 
-MODULES = [
-    Module(
-        id=1,
-        title="Propositional Logic",
-        description="Statements, connectives, and implications.",
-        display_order=0,
-        lessons=[
-            LessonSummary(id=1, title="Propositions"),
-            LessonSummary(id=2, title="Implications"),
-        ],
-    ),
-    Module(
-        id=2,
-        title="Sets",
-        description="Sets and their operations.",
-        display_order=1,
-        lessons=[LessonSummary(id=3, title="Set basics")],
-    ),
-]
-
-# Module 2 has no quiz, so the quiz route's 404 path is reachable.
+# Only module 1 has a quiz, so the quiz route's 404 path is reachable.
 QUIZZES = {
     1: Quiz(
         id=1,

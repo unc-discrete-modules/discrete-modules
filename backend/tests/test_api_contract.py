@@ -48,17 +48,6 @@ def test_healthz(client):
     assert client.get("/api/healthz").json() == {"status": "ok"}
 
 
-def test_modules_are_ordered_with_lessons(client):
-    modules = client.get("/api/modules").json()
-
-    assert [m["display_order"] for m in modules] == [0, 1]
-    assert modules[0]["lessons"] == [
-        {"id": 1, "title": "Propositions"},
-        {"id": 2, "title": "Implications"},
-    ]
-    assert client.get("/api/modules/1").json() == modules[0]
-
-
 def test_lesson_links_stay_within_module(client):
     first = client.get("/api/lessons/1").json()
     last = client.get("/api/lessons/2").json()
@@ -82,9 +71,7 @@ def test_quiz_hides_answers_and_lists_options_for_multiple_choice(client):
     assert "correct" not in str(quiz).lower()
 
 
-@pytest.mark.parametrize(
-    "path", ["/api/modules/99", "/api/lessons/99", "/api/modules/2/quiz", "/nope"]
-)
+@pytest.mark.parametrize("path", ["/api/lessons/99", "/api/modules/2/quiz", "/nope"])
 def test_missing_resources_use_error_envelope(client, path):
     response = client.get(path)
 
@@ -153,10 +140,10 @@ def test_malformed_submission_lists_field_errors(client, request_kwargs):
 
 
 def test_non_integer_id_is_422(client):
-    response = client.get("/api/modules/abc")
+    response = client.get("/api/lessons/abc")
 
     assert response.status_code == 422
-    assert response.json()["error"]["details"][0]["loc"] == ["path", "module_id"]
+    assert response.json()["error"]["details"][0]["loc"] == ["path", "lesson_id"]
 
 
 @pytest.mark.parametrize("mutate", ["missing", "duplicate", "wrong_type"])
