@@ -6,7 +6,12 @@ from src.routers import health, lessons, modules, quizzes, root
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Discrete Modules API")
+    app = FastAPI(
+        title="Discrete Modules API",
+        docs_url="/api/docs",
+        openapi_url="/api/openapi.json",
+        redoc_url="/api/redoc",
+    )
     app.state.settings = Settings()
     register_error_handlers(app)
     for router in (root, health, modules, lessons, quizzes):

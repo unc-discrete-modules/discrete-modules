@@ -14,7 +14,7 @@ docker compose up --build
 ```
 
 This one command starts all services. Open the client at
-http://localhost:5173 and the API documentation at http://localhost:8000/docs.
+http://localhost:5173 and the API documentation at http://localhost:8000/api/docs.
 Source directories are mounted into the front end and back end containers, so
 edits reload automatically. Stop the stack with `docker compose down`; add
 `--volumes` only when you also want to remove the local Postgres data.
@@ -29,8 +29,9 @@ in the ignored `.env` file, never in version control.
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` configure Postgres.
 - `DATABASE_URL` is for running FastAPI directly outside Compose.
 - `ALLOWED_ORIGINS` is the JSON list of browser origins FastAPI may allow.
-- `VITE_API_URL` is the API URL compiled into the client; it defaults to the
-  locally published API at `http://localhost:8000`.
+- `VITE_API_URL` is the API URL compiled into the client; local Compose uses
+  the published API at `http://localhost:8080`, while production images default
+  to the same-origin `/api` proxy.
 
 ### Database commands
 
@@ -65,8 +66,8 @@ docker build -t discrete-modules-backend backend
 
 Both images run as non-root and listen on port 8080 for OpenShift compatibility.
 The production frontend is a static NGINX server with an `index.html` fallback
-for client-side routes. It serves client assets only; deploy the API separately
-and set `VITE_API_URL` at build time with
-`--build-arg VITE_API_URL=https://api.example.edu`. The current client
-does not yet make API requests, but that variable is ready for its first API
-integration.
+for client-side routes. It also proxies `/api` and `/saml/acs` to a separately
+deployed internal API Service. Override `VITE_API_URL` at build time when
+necessary; production defaults to the same-origin `/api` proxy. The current
+client does not yet make API requests, but that variable is ready for its first
+API integration.
