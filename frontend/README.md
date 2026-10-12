@@ -23,9 +23,8 @@ All pages can be found in `frontend/src/pages`, while components are stored in `
 
 ## Routing Guide
 
-- Home: `/`
+- Landing Page: `/`
 - Login: `/login`
-- Module Overviews: `/modules/:id`
-  - Module summary quiz: `/modules/:id/quiz`
-- Lessons: `/lessons/:id`
-  - Lesson-specific quiz: `/lesson/:id/quiz`
+- Module Overviews: `/modules/:moduleId`
+- Quizzes:`/modules/:moduleId/quiz/:quizId`
+- Lessons: `/modules/:moduleId/lessons/:lessonId`
