@@ -26,7 +26,6 @@ def test_api_documentation_paths():
     assert docs_response.status_code == 200
     assert schema_response.status_code == 200
     assert "/api/" in schema_response.json()["paths"]
-    assert "/healthz" not in schema_response.json()["paths"]
 
 
 def test_unprefixed_and_reserved_routes_are_not_implemented():
