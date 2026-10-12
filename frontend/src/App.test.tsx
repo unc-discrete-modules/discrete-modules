@@ -1,14 +1,19 @@
 import '@testing-library/jest-dom/vitest'
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import App from './App'
 
 describe('App', () => {
   it('renders the application heading', () => {
-    render(<App />)
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <App />
+      </MemoryRouter>,
+    )
 
     expect(
-      screen.getByRole('heading', { name: 'Hello World' }),
+      screen.getByRole('heading', { name: 'Home Page' }),
     ).toBeInTheDocument()
   })
 })

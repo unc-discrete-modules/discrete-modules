@@ -1,9 +1,30 @@
+import { Route, Routes } from 'react-router-dom'
+import Home from './pages/Home'
+import Lesson from './pages/Lesson'
+import Module from './pages/Module'
+
+function Quiz() {
+  return <h1>Quiz View</h1>
+}
+
+function Login() {
+  return <h1>Login</h1>
+}
 
 function App() {
-
   return (
     <>
-      <h1>Hello World</h1>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/modules/:moduleId" element={<Module />} />
+        <Route
+          path="/modules/:moduleId/lessons/:lessonId"
+          element={<Lesson />}
+        />
+        <Route path="/modules/:moduleId/quiz/:quizId" element={<Quiz />} />
+        <Route path="/modules/:moduleId/summary" element={<Quiz />} />
+      </Routes>
     </>
   )
 }
