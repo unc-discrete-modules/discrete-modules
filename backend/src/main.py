@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from src.config import Settings
 from src.errors import register_error_handlers
-from src.routers import health, lessons, modules, quizzes, root
+from src.routers import root
 
 
 def create_app() -> FastAPI:
@@ -14,8 +14,7 @@ def create_app() -> FastAPI:
     )
     app.state.settings = Settings()
     register_error_handlers(app)
-    for router in (root, health, modules, lessons, quizzes):
-        app.include_router(router.router)
+    app.include_router(root.router)
     return app
 
 

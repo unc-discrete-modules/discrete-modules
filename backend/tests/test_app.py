@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from src.main import create_app
@@ -12,7 +13,7 @@ def test_app_smoke():
 
 def test_health_check():
     with TestClient(create_app()) as client:
-        response = client.get("/healthz")
+        response = client.get("/api/healthz")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
@@ -35,6 +36,24 @@ def test_unprefixed_and_reserved_routes_are_not_implemented():
 
     assert root_response.status_code == 404
     assert saml_response.status_code == 404
+
+
+@pytest.mark.parametrize(
+    "method, path",
+    [
+        ("get", "/healthz"),
+        ("get", "/modules"),
+        ("get", "/modules/1"),
+        ("get", "/modules/1/quiz"),
+        ("get", "/lessons/1"),
+        ("post", "/quizzes/1/submissions"),
+    ],
+)
+def test_api_routes_require_prefix(method, path):
+    with TestClient(create_app()) as client:
+        response = client.request(method, path)
+
+    assert response.status_code == 404
 
 
 def test_app_loads_environment_settings(monkeypatch):

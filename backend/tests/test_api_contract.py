@@ -23,19 +23,20 @@ def answers(option_id=2, blank="Contrapositive ", essay="Because."):
 def test_openapi_documents_every_contract_route():
     paths = create_app().openapi()["paths"]
 
-    assert set(paths) >= {
-        "/modules",
-        "/modules/{module_id}",
-        "/modules/{module_id}/quiz",
-        "/lessons/{lesson_id}",
-        "/quizzes/{quiz_id}/submissions",
-        "/healthz",
+    assert set(paths) == {
+        "/api/",
+        "/api/modules",
+        "/api/modules/{module_id}",
+        "/api/modules/{module_id}/quiz",
+        "/api/lessons/{lesson_id}",
+        "/api/quizzes/{quiz_id}/submissions",
+        "/api/healthz",
     }
     for path, method in [
-        ("/modules/{module_id}", "get"),
-        ("/lessons/{lesson_id}", "get"),
-        ("/modules/{module_id}/quiz", "get"),
-        ("/quizzes/{quiz_id}/submissions", "post"),
+        ("/api/modules/{module_id}", "get"),
+        ("/api/lessons/{lesson_id}", "get"),
+        ("/api/modules/{module_id}/quiz", "get"),
+        ("/api/quizzes/{quiz_id}/submissions", "post"),
     ]:
         responses = paths[path][method]["responses"]
         for status in ("404", "422"):
@@ -44,23 +45,23 @@ def test_openapi_documents_every_contract_route():
 
 
 def test_healthz(client):
-    assert client.get("/healthz").json() == {"status": "ok"}
+    assert client.get("/api/healthz").json() == {"status": "ok"}
 
 
 def test_modules_are_ordered_with_lessons(client):
-    modules = client.get("/modules").json()
+    modules = client.get("/api/modules").json()
 
     assert [m["display_order"] for m in modules] == [0, 1]
     assert modules[0]["lessons"] == [
         {"id": 1, "title": "Propositions"},
         {"id": 2, "title": "Implications"},
     ]
-    assert client.get("/modules/1").json() == modules[0]
+    assert client.get("/api/modules/1").json() == modules[0]
 
 
 def test_lesson_links_stay_within_module(client):
-    first = client.get("/lessons/1").json()
-    last = client.get("/lessons/2").json()
+    first = client.get("/api/lessons/1").json()
+    last = client.get("/api/lessons/2").json()
 
     assert (first["previous_lesson_id"], first["next_lesson_id"]) == (None, 2)
     assert (last["previous_lesson_id"], last["next_lesson_id"]) == (1, None)
@@ -69,7 +70,7 @@ def test_lesson_links_stay_within_module(client):
 
 
 def test_quiz_hides_answers_and_lists_options_for_multiple_choice(client):
-    quiz = client.get("/modules/1/quiz").json()
+    quiz = client.get("/api/modules/1/quiz").json()
 
     assert [q["type"] for q in quiz["questions"]] == [
         "multiple_choice",
@@ -82,7 +83,7 @@ def test_quiz_hides_answers_and_lists_options_for_multiple_choice(client):
 
 
 @pytest.mark.parametrize(
-    "path", ["/modules/99", "/lessons/99", "/modules/2/quiz", "/nope"]
+    "path", ["/api/modules/99", "/api/lessons/99", "/api/modules/2/quiz", "/nope"]
 )
 def test_missing_resources_use_error_envelope(client, path):
     response = client.get(path)
@@ -94,7 +95,7 @@ def test_missing_resources_use_error_envelope(client, path):
 
 
 def test_submission_reports_each_question(client):
-    response = client.post("/quizzes/1/submissions", json=answers())
+    response = client.post("/api/quizzes/1/submissions", json=answers())
 
     assert response.status_code == 200
     assert response.json()["results"] == [
@@ -121,14 +122,14 @@ def test_submission_reports_each_question(client):
 
 def test_wrong_answers_are_marked_incorrect(client):
     results = client.post(
-        "/quizzes/1/submissions", json=answers(option_id=1, blank="inverse")
+        "/api/quizzes/1/submissions", json=answers(option_id=1, blank="inverse")
     ).json()["results"]
 
     assert [r["correct"] for r in results] == [False, False, None]
 
 
 def test_submission_to_unknown_quiz_is_404(client):
-    response = client.post("/quizzes/99/submissions", json=answers())
+    response = client.post("/api/quizzes/99/submissions", json=answers())
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "not_found"
@@ -143,7 +144,7 @@ def test_submission_to_unknown_quiz_is_404(client):
     ],
 )
 def test_malformed_submission_lists_field_errors(client, request_kwargs):
-    response = client.post("/quizzes/1/submissions", **request_kwargs)
+    response = client.post("/api/quizzes/1/submissions", **request_kwargs)
 
     assert response.status_code == 422
     error = response.json()["error"]
@@ -152,7 +153,7 @@ def test_malformed_submission_lists_field_errors(client, request_kwargs):
 
 
 def test_non_integer_id_is_422(client):
-    response = client.get("/modules/abc")
+    response = client.get("/api/modules/abc")
 
     assert response.status_code == 422
     assert response.json()["error"]["details"][0]["loc"] == ["path", "module_id"]
@@ -168,7 +169,7 @@ def test_submission_must_answer_each_question_once(client, mutate):
     else:
         body["answers"][0] = {"question_id": 1, "type": "fill_in_blank", "text": "x"}
 
-    response = client.post("/quizzes/1/submissions", json=body)
+    response = client.post("/api/quizzes/1/submissions", json=body)
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "validation_error"

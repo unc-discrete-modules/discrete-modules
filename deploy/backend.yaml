@@ -70,7 +70,7 @@ spec:
                   key: ALLOWED_ORIGINS
           readinessProbe:
             httpGet:
-              path: /healthz
+              path: /api/healthz
               port: http
             initialDelaySeconds: 2
             periodSeconds: 10
@@ -78,7 +78,7 @@ spec:
             failureThreshold: 3
           livenessProbe:
             httpGet:
-              path: /healthz
+              path: /api/healthz
               port: http
             initialDelaySeconds: 10
             periodSeconds: 20

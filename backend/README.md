@@ -10,7 +10,7 @@ uv run uvicorn src.main:app --reload
 
 The API runs at http://localhost:8000, with interactive documentation at
 http://localhost:8000/api/docs. Application routes use the `/api` prefix, and
-the unauthenticated health check is available at `/healthz`.
+the unauthenticated health check is available at `/api/healthz`.
 
 ## Configuration
 
