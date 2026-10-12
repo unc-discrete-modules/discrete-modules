@@ -31,7 +31,7 @@ The selected platform is React, FastAPI, PostgreSQL, and UNC Cloud Apps (OpenShi
 - Keep changes small, clean, and organized. Apply KISS and DRY: prefer the simplest clear design, and extract shared behavior only when it has a real, stable reuse case.
 - Comments explain a design decision or constraint, never restate code or process history. Do not use agent-oriented terminology in comments or documentation.
 - Reuse React components and model state explicitly. Consult the relevant library documentation before adding or configuring dependencies.
-- Format and lint Python with Black and its configured linter; resolve all findings before committing. Lint and format React/TSX with ESLint; resolve all findings before committing.
+- Format Python with `ruff format` and lint it with `ruff check`; resolve all findings before committing. Lint and format React/TSX with ESLint; resolve all findings before committing.
 - Test every change locally. Add focused tests for behavior changes and run the relevant package's complete test, lint, and build checks before opening a PR.
 - Give advance notice when unavailable or at risk of missing a deadline; share a useful update and ask for help early. Be respectful.
 
