@@ -1,16 +1,23 @@
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session
+
+from src.database import get_db_session
 from src.errors import INVALID, NOT_FOUND
-from src.schemas.module import Module
+from src.schemas.module import Module, ModuleSummary
 from src.schemas.quiz import Quiz
+from src.services import modules as module_service
 from src.services import stub_content
 
 router = APIRouter(prefix="/modules", tags=["modules"])
 
+SessionDep = Annotated[Session, Depends(get_db_session)]
 
-@router.get("", operation_id="list_modules", summary="List modules")
-def list_modules() -> list[Module]:
-    return stub_content.MODULES
+
+@router.get("", operation_id="list_modules", summary="List modules in display order")
+def list_modules(session: SessionDep) -> list[ModuleSummary]:
+    return module_service.list_modules(session)
 
 
 @router.get(
@@ -19,8 +26,8 @@ def list_modules() -> list[Module]:
     summary="Get a module and its lessons",
     responses=NOT_FOUND | INVALID,
 )
-def get_module(module_id: int) -> Module:
-    module = next((m for m in stub_content.MODULES if m.id == module_id), None)
+def get_module(module_id: int, session: SessionDep) -> Module:
+    module = module_service.get_module(session, module_id)
     if module is None:
         raise HTTPException(404, f"Module {module_id} not found")
     return module
