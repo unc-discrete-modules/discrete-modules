@@ -18,27 +18,36 @@ import type { Module } from '@/types/types'
 
 type ModuleCollapsibleProps = {
   module: Module
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
-export default function ModuleCollapsible({ module }: ModuleCollapsibleProps) {
+export default function ModuleCollapsible({
+  module,
+  open,
+  onOpenChange,
+}: ModuleCollapsibleProps) {
   const { moduleId, lessonId } = useParams()
   const isCurrentModule = Number(moduleId) === module.id
 
   return (
-    <Collapsible defaultOpen={isCurrentModule} className="group/collapsible">
-      <SidebarMenuItem>
+    <Collapsible
+      open={open}
+      onOpenChange={onOpenChange}
+      className="group/collapsible"
+    >
+      <SidebarMenuItem className="list-none w-full">
         <CollapsibleTrigger>
           <SidebarMenuButton isActive={isCurrentModule}>
             <span>{module.title}</span>
-            <span>{module.description}</span>
-            <ChevronRight className="ml-auto transition-transform duration-200 group-data-open/collapsible:rotate-90" />
+            <ChevronRight className="ml-auto transition-transform duration-150 group-data-open/collapsible:rotate-90" />
           </SidebarMenuButton>
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <SidebarMenuSub>
+          <SidebarMenuSub className="list-none">
             {module.lessons.map((lesson) => (
-              <SidebarMenuSubItem key={lesson.id}>
+              <SidebarMenuSubItem key={lesson.id} className="list-none">
                 <SidebarMenuSubButton isActive={lesson.id === Number(lessonId)}>
                   <Link to={`/modules/${module.id}/lessons/${lesson.id}`}>
                     {lesson.title}
