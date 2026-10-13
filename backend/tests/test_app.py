@@ -1,5 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import OperationalError
 
 from src.main import create_app
 
@@ -11,12 +12,38 @@ def test_app_smoke():
     assert response.json() == "Hello, world"
 
 
-def test_health_check():
+def test_health_check_reports_ok_when_database_is_reachable(db_session):
     with TestClient(create_app()) as client:
         response = client.get("/api/healthz")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        OperationalError("SELECT 1", None, Exception("connection refused")),
+        RuntimeError("DATABASE_URL must be set to use database sessions"),
+    ],
+)
+def test_health_check_returns_503_when_database_is_unavailable(monkeypatch, failure):
+    def unavailable():
+        raise failure
+
+    monkeypatch.setattr("src.routers.health.get_engine", unavailable)
+
+    with TestClient(create_app()) as client:
+        response = client.get("/api/healthz")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "error": {
+            "code": "service_unavailable",
+            "message": "Database unavailable",
+            "details": None,
+        }
+    }
 
 
 def test_api_documentation_paths():

@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.config import Settings
 from src.errors import register_error_handlers
@@ -12,8 +13,15 @@ def create_app() -> FastAPI:
         openapi_url="/api/openapi.json",
         redoc_url="/api/redoc",
     )
-    app.state.settings = Settings()
+    settings = Settings()
+    app.state.settings = settings
     register_error_handlers(app)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.allowed_origins,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
+    )
     app.include_router(root.router)
     return app
 

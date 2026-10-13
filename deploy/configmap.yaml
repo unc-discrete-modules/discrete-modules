@@ -5,4 +5,4 @@ metadata:
   labels:
     app.kubernetes.io/name: discrete-modules
 data:
-  ALLOWED_ORIGINS: "[]"
+  ALLOWED_ORIGINS: '["https://discrete-modules.apps.cloudapps.unc.edu"]'
