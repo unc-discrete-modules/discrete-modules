@@ -28,8 +28,8 @@ export ALLOWED_ORIGINS='["http://localhost:5173"]'
 `DATABASE_URL` defaults to unset; commands that connect to the database require
 it to be configured.
 `ALLOWED_ORIGINS` is a JSON array of origins and defaults to an empty list.
-Settings are available on `app.state.settings`. CORS middleware and database
-sessions will be added in the corresponding follow-up issues.
+Settings are available on `app.state.settings`. CORS allows only the origins
+in `ALLOWED_ORIGINS`; a wildcard is rejected at startup.
 Keep actual credentials in environment variables or the ignored `.env` file.
 
 ## Database migrations

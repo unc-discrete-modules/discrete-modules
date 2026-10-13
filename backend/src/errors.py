@@ -5,10 +5,15 @@ from starlette.exceptions import HTTPException
 
 from src.schemas.errors import ErrorBody, ErrorDetail, ErrorResponse
 
-ERROR_CODES = {404: "not_found", 422: "validation_error"}
+ERROR_CODES = {
+    404: "not_found",
+    422: "validation_error",
+    503: "service_unavailable",
+}
 
 NOT_FOUND = {404: {"model": ErrorResponse, "description": "Resource not found"}}
 INVALID = {422: {"model": ErrorResponse, "description": "Invalid request"}}
+UNAVAILABLE = {503: {"model": ErrorResponse, "description": "Database unreachable"}}
 
 
 def _response(status_code: int, body: ErrorBody) -> JSONResponse:
