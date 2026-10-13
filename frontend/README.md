@@ -1,6 +1,6 @@
 # Discrete Modules frontend
 
-Requires npm, [React Router](https://reactrouter.com/start/framework/installation), ESLint, and [Prettier](https://prettier.io/docs/install).
+Requires npm, [React Router](https://reactrouter.com/start/framework/installation), [Shadcn UI](https://ui.shadcn.com/docs/installation/vite#existing-vite-project), Tailwind CSS, ESLint, and [Prettier](https://prettier.io/docs/install).
 
 ```Shell
 npm ci
