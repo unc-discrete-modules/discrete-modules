@@ -1,0 +1,20 @@
+import { Outlet } from 'react-router-dom'
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from '@/components/ui/sidebar'
+import ModuleSidebar from '@/components/ModuleSidebar'
+
+export default function Layout() {
+  return (
+    <SidebarProvider>
+      <ModuleSidebar />
+      <SidebarInset>
+        <main className="flex-1 p-6">
+          <Outlet />
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
+  )
+}
