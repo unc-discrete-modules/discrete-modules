@@ -1,0 +1,4 @@
+title: Proving Invariants
+description: >-
+  Prove a loop invariant by induction on the loop variable, using proof by
+  cases on the branches of the loop body.
