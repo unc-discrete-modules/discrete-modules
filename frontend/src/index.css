@@ -4,6 +4,11 @@
 @import '@fontsource-variable/inter';
 @import '@fontsource-variable/outfit';
 
+mjx-container:not([display='true']) {
+  display: inline-block;
+  vertical-align: middle;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
