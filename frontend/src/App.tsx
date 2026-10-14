@@ -1,7 +1,9 @@
-import { Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import Home from './pages/Home'
 import Lesson from './pages/Lesson'
 import Module from './pages/Module'
+import Layout from './components/Layout'
+import { CourseProvider } from './context/course-context'
 
 function Quiz() {
   return <h1>Quiz View</h1>
@@ -14,17 +16,28 @@ function Login() {
 function App() {
   return (
     <>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/modules/:moduleId" element={<Module />} />
-        <Route
-          path="/modules/:moduleId/lessons/:lessonId"
-          element={<Lesson />}
-        />
-        <Route path="/modules/:moduleId/quiz/:quizId" element={<Quiz />} />
-        <Route path="/modules/:moduleId/summary" element={<Quiz />} />
-      </Routes>
+      <BrowserRouter>
+        <CourseProvider>
+          <Routes>
+            {/* the login page should not display a sidebar. */}
+            <Route path="/login" element={<Login />} />
+
+            <Route element={<Layout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/modules/:moduleId" element={<Module />} />
+              <Route
+                path="/modules/:moduleId/lessons/:lessonId"
+                element={<Lesson />}
+              />
+              <Route
+                path="/modules/:moduleId/quiz/:quizId"
+                element={<Quiz />}
+              />
+              <Route path="/modules/:moduleId/summary" element={<Quiz />} />
+            </Route>
+          </Routes>
+        </CourseProvider>
+      </BrowserRouter>
     </>
   )
 }
