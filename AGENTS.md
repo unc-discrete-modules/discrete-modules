@@ -43,7 +43,12 @@ Run backend commands from `backend/`:
 uv sync --locked
 uv run pytest
 uv run uvicorn src.main:app --reload
+uv run python -m src.seed --check
+uv run python -m src.seed
 ```
+
+`src.seed --check` validates `content/` without a database; `src.seed` loads it
+into PostgreSQL and is idempotent. See `content/README.md` for the content format.
 
 ### Database migrations
 

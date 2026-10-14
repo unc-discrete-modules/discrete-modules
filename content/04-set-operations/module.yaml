@@ -1,0 +1,5 @@
+title: Set Operations
+description: >-
+  Apply predicate logic to sets: subset, equality, complement, intersection,
+  union, difference, xor, disjoint union, Cartesian product, powersets and
+  k-subsets.
