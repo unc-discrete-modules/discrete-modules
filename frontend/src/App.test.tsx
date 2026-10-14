@@ -8,7 +8,7 @@ describe('App', () => {
     vi.unstubAllGlobals()
   })
 
-  it('renders the application heading', () => {
+  it('renders the home page greeting and module cards', () => {
     vi.stubGlobal(
       'matchMedia',
       vi.fn().mockReturnValue({
@@ -21,7 +21,10 @@ describe('App', () => {
     render(<App />)
 
     expect(
-      screen.getByRole('heading', { name: 'Home Page' }),
+      screen.getByRole('heading', {
+        name: /Welcome back,/,
+      }),
     ).toBeInTheDocument()
+    expect(screen.getByText('Click on a card to begin.')).toBeInTheDocument()
   })
 })
