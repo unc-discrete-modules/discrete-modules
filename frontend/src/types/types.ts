@@ -1,10 +1,15 @@
 export type Lesson = {
   id: number
   title: string
-  body?: string
-  video_url?: string
-  previous_lesson_id?: number
-  next_lesson_id?: 0
+  body: string
+  video_url: string | null
+  previous_lesson_id: number | null
+  next_lesson_id: number | null
+}
+
+export type LessonSummary = {
+  id: number
+  title: string
 }
 
 export type Module = {
@@ -12,7 +17,7 @@ export type Module = {
   title: string
   description: string
   display_order: number
-  lessons: Lesson[]
+  lessons: LessonSummary[]
 }
 
 export type CourseContextValue = {

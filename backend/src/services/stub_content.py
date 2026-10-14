@@ -27,7 +27,7 @@ LESSONS = {
         id=2,
         title="Implications",
         body="The contrapositive of $p \\to q$ is $\\neg q \\to \\neg p$.",
-        video_url="https://example.com/videos/implications",
+        video_url="https://www.youtube.com/embed/rAxXcX_w5fE",
         previous_lesson_id=1,
     ),
     3: Lesson(id=3, title="Set basics", body="A set is an unordered collection."),
