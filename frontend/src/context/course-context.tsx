@@ -1,9 +1,9 @@
 // src/context/course-context.tsx
-import { createContext, useContext, useEffect, useState } from 'react'
-import { type Module, type CourseContextValue } from '@/types/types'
+import { useEffect, useState } from 'react'
+import type { Module } from '@/types/types'
+import { CourseContext } from './course-context-value'
 
 console.log('yo', import.meta.env.VITE_API_URL)
-const CourseContext = createContext<CourseContextValue | null>(null)
 
 export function CourseProvider({ children }: { children: React.ReactNode }) {
   const [modules, setModules] = useState<Module[] | null>(null)
@@ -26,10 +26,4 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
       {children}
     </CourseContext.Provider>
   )
-}
-
-export function useModules() {
-  const ctx = useContext(CourseContext)
-  if (!ctx) throw new Error('useModules must be used inside CourseProvider')
-  return ctx
 }

@@ -1,9 +1,5 @@
 import { Outlet } from 'react-router-dom'
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@/components/ui/sidebar'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import ModuleSidebar from '@/components/ModuleSidebar'
 
 export default function Layout() {

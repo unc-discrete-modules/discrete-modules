@@ -1,16 +1,7 @@
 /** Sidebar that displays modules. */
-import { Link, useParams } from 'react-router-dom'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarHeader,
-} from './ui/sidebar'
-import { useModules } from '@/context/course-context'
+import { useParams } from 'react-router-dom'
+import { Sidebar, SidebarContent, SidebarHeader } from './ui/sidebar'
+// import { useModules } from '@/context/course-context'
 import ModuleDropdown from './ModuleCollapsible'
 import { useState } from 'react'
 
@@ -48,7 +39,7 @@ const mockModules = [
 ]
 
 export default function ModuleSidebar() {
-  const { lessonId, moduleId } = useParams()
+  const { moduleId } = useParams()
   const [openId, setOpenId] = useState<number | null>(Number(moduleId) || null)
   // const { modules, loading, error } = useModules()
   const modules = mockModules
