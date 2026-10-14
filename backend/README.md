@@ -49,6 +49,21 @@ uv run alembic revision --autogenerate -m "describe the schema change"
 Review every generated revision before applying it. Alembic reads
 `DATABASE_URL`; it does not store credentials in `alembic.ini`.
 
+## Loading content
+
+Lessons and quizzes live in the repository's `content/` directory (see
+[`content/README.md`](../content/README.md) for the format). After migrating,
+load them with:
+
+```sh
+uv run python -m src.seed --check   # validate only; no database needed
+uv run python -m src.seed           # create or update rows in DATABASE_URL
+```
+
+The seed matches rows by key, so it is safe to re-run: IDs stay stable, nothing
+is duplicated, and content removed from `content/` is removed from the
+database. `CONTENT_DIR` (or `--content-dir`) selects another directory.
+
 ## Application database sessions
 
 Use `get_db_session` as a FastAPI dependency for one SQLModel session per

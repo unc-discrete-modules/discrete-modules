@@ -1,0 +1,82 @@
+questions:
+  - key: identify-p
+    type: multiple_choice
+    prompt: |
+      In the statement "If $x$ is even, then $x^2$ is even," which part is $P$
+      in $P \rightarrow Q$?
+    options:
+      - text: "$x$ is even"
+        correct: true
+      - text: "$x^2$ is even"
+      - text: "$x$ is odd"
+      - text: "Everything you know about math is true"
+
+  - key: contradiction-assumption
+    type: multiple_choice
+    prompt: |
+      To prove $P \rightarrow Q$ by contradiction, which statement do you
+      assume and then show leads to an impossible state $\bot$?
+    options:
+      - text: "$P \\land \\neg Q$"
+        correct: true
+      - text: "$\\neg P \\land Q$"
+      - text: "$Q \\rightarrow P$"
+      - text: "$\\neg P \\lor Q$"
+
+  - key: contrapositive-form
+    type: multiple_choice
+    prompt: |
+      Which statement is the contrapositive of $P \rightarrow Q$?
+    options:
+      - text: "$Q \\rightarrow P$"
+      - text: "$\\neg P \\rightarrow \\neg Q$"
+      - text: "$\\neg Q \\rightarrow \\neg P$"
+        correct: true
+      - text: "$P \\land \\neg Q$"
+
+  - key: odd-rewrite
+    type: multiple_choice
+    prompt: |
+      Which rewrite does the course use for "$n$ is an odd integer"?
+    options:
+      - text: "$n = 2t$ for some integer $t$"
+      - text: "$n = 2t + 1$ for some integer $t$"
+        correct: true
+      - text: "$n = t^2$ for some integer $t$"
+      - text: "$n = \\frac{a}{b}$ for integers $a$ and $b$"
+
+  - key: disprove-technique
+    type: fill_in_blank
+    prompt: |
+      The easiest way to disprove a "for all" statement is to give a single
+      case where it fails. This is a proof by ______.
+    answer: counterexample
+
+  - key: contrapositive-technique
+    type: fill_in_blank
+    prompt: |
+      A proof that assumes $\neg Q$ and shows $\neg P$ is a proof by
+      ______.
+    answer: contrapositive
+
+  - key: odd-square
+    type: free_response
+    prompt: |
+      Prove that if $x$ is an odd integer, then $x^2$ is odd. Use the
+      two-column statement and reason format.
+    answer: |
+      1. $x$ is odd. (Given, this is $P$)
+      2. $x = 2k + 1$ for some integer $k$. (Definition of an odd number)
+      3. $x^2 = (2k + 1)^2$. (Squared both sides of line 2)
+      4. $x^2 = 4k^2 + 4k + 1$. (Expanded line 3)
+      5. $x^2 = 2(2k^2 + 2k) + 1$. (Rewrote line 4)
+      6. $x^2$ is odd. (Definition of an odd number, with $t = 2k^2 + 2k$)
+
+  - key: square-exceeds-value
+    type: free_response
+    prompt: |
+      Disprove the statement "For every integer $x$, $x^2 > x$."
+    answer: |
+      Take $x = 1$. Then $x^2 = 1$, and $1 > 1$ is false, so the statement
+      fails for $x = 1$. (The counterexample $x = 0$ also works, since
+      $0 > 0$ is false.)
