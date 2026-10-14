@@ -4,7 +4,8 @@
 @import '@fontsource-variable/inter';
 @import '@fontsource-variable/outfit';
 
-mjx-container:not([display='true']) {
+.lesson-content mjx-container:not([display='true']),
+.lesson-content mjx-container:not([display='true']) svg {
   display: inline-block;
   vertical-align: middle;
 }

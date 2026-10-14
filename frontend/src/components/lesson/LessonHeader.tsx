@@ -1,13 +1,19 @@
+import ReactMarkdown from 'react-markdown'
+import rehypeMathjax from 'rehype-mathjax'
+import remarkMath from 'remark-math'
+
 type LessonHeaderProps = {
   title: string
   moduleId?: string
   lessonId?: string
+  objectives: string
 }
 
 export default function LessonHeader({
   title,
   moduleId,
   lessonId,
+  objectives,
 }: LessonHeaderProps) {
   return (
     <header>
@@ -17,10 +23,29 @@ export default function LessonHeader({
       <p className="mt-4 text-m text-slate-500">
         Dashboard / Module {moduleId} / Lesson {lessonId}
       </p>
-      <h2 className="mt-4 text-xl font-semibold text-slate-700">Overview</h2>
-      <p className="mt-1 text-base text-slate-700">
-        In this lesson, you will learn about {title.toLowerCase()}.
-      </p>
+      <h2 className="mt-4 text-xl font-semibold text-slate-700">
+        In this lesson, you will learn to
+      </h2>
+      {objectives ? (
+        <div className="lesson-content mt-2 text-base leading-7 text-slate-700">
+          <ReactMarkdown
+            remarkPlugins={[remarkMath]}
+            rehypePlugins={[rehypeMathjax]}
+            components={{
+              ul: ({ children }) => (
+                <ul className="ml-6 list-disc space-y-1">{children}</ul>
+              ),
+              strong: ({ children }) => (
+                <strong className="font-semibold text-slate-900">
+                  {children}
+                </strong>
+              ),
+            }}
+          >
+            {objectives}
+          </ReactMarkdown>
+        </div>
+      ) : null}
     </header>
   )
 }

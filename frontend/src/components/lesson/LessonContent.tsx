@@ -1,26 +1,49 @@
-import { useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
-
-declare global {
-  interface Window {
-    MathJax?: {
-      typesetPromise?: () => Promise<void>
-    }
-  }
-}
+import rehypeMathjax from 'rehype-mathjax'
+import remarkMath from 'remark-math'
 
 type LessonContentProps = {
   body: string
 }
 
 export default function LessonContent({ body }: LessonContentProps) {
-  useEffect(() => {
-    window.MathJax?.typesetPromise?.().catch(() => undefined)
-  }, [body])
-
   return (
-    <article className="mt-5 space-y-6 text-base leading-8 text-slate-700">
-      <ReactMarkdown>{body}</ReactMarkdown>
+    <article className="lesson-content mt-5 space-y-6 text-base leading-8 text-slate-700">
+      <ReactMarkdown
+        remarkPlugins={[remarkMath]}
+        rehypePlugins={[rehypeMathjax]}
+        components={{
+          h1: ({ children }) => (
+            <h1 className="mt-8 text-3xl font-semibold text-slate-900">
+              {children}
+            </h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="mt-8 text-2xl font-semibold text-slate-900">
+              {children}
+            </h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="mt-6 text-xl font-semibold text-slate-900">
+              {children}
+            </h3>
+          ),
+          p: ({ children }) => (
+            <p className="text-base leading-8 text-slate-700">{children}</p>
+          ),
+          strong: ({ children }) => (
+            <strong className="font-semibold text-slate-900">{children}</strong>
+          ),
+          ul: ({ children }) => (
+            <ul className="ml-6 list-disc space-y-2">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="ml-6 list-decimal space-y-2">{children}</ol>
+          ),
+        }}
+      >
+        {body}
+      </ReactMarkdown>
     </article>
   )
 }
