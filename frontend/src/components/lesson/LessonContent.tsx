@@ -8,7 +8,7 @@ type LessonContentProps = {
 
 export default function LessonContent({ body }: LessonContentProps) {
   return (
-    <article className="lesson-content mt-5 space-y-6 text-base leading-8 text-slate-700">
+    <article className="lesson-content mt-5 space-y-3 text-base leading-8 text-slate-700">
       <ReactMarkdown
         remarkPlugins={[remarkMath]}
         rehypePlugins={[rehypeMathjax]}
@@ -19,7 +19,7 @@ export default function LessonContent({ body }: LessonContentProps) {
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="mt-8 text-2xl font-semibold text-slate-900">
+            <h2 className="mt-10 text-2xl font-semibold text-slate-900">
               {children}
             </h2>
           ),
@@ -29,16 +29,16 @@ export default function LessonContent({ body }: LessonContentProps) {
             </h3>
           ),
           p: ({ children }) => (
-            <p className="text-base leading-8 text-slate-700">{children}</p>
+            <p className="text-base leading-7 text-slate-700">{children}</p>
           ),
           strong: ({ children }) => (
             <strong className="font-semibold text-slate-900">{children}</strong>
           ),
           ul: ({ children }) => (
-            <ul className="ml-6 list-disc space-y-2">{children}</ul>
+            <ul className="ml-6 list-disc space-y-1">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="ml-6 list-decimal space-y-2">{children}</ol>
+            <ol className="ml-6 list-decimal space-y-1">{children}</ol>
           ),
         }}
       >
