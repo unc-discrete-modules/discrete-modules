@@ -14,7 +14,7 @@ export default function Home() {
       <div className="ml-20">
         <h4 className="py-5 text-gray-500">Click on a card to begin.</h4>
         {/* module card grid */}
-        <div className="grid grid-cols-2 grid-rows-auto gap-y-15">
+        <div className="grid grid-cols-3 grid-rows-auto gap-x-[5%] gap-y-15">
           {modules?.map((mod) => (
             <ModuleCard key={mod.id} module={mod} />
           ))}

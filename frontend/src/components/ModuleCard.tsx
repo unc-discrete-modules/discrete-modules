@@ -13,7 +13,7 @@ const progress = 60 // placeholder value
 
 export default function ModuleCard({ module }: ModuleCardProps) {
   return (
-    <Card className="w-[320px] overflow-hidden p-0 gap-0">
+    <Card className="w-full overflow-hidden p-0 gap-0">
       {/* image with overlaid badge */}
       <div className="relative">
         {/* placeholder for image: */}
@@ -25,9 +25,11 @@ export default function ModuleCard({ module }: ModuleCardProps) {
         /> */}
         <Badge
           variant="secondary"
-          className="absolute left-4 top-4 rounded-md text-md bg-white text-muted-navy shadow-md hover:bg-white"
+          className="absolute left-4 top-4 max-w-[60%] rounded-md bg-white text-left text-md text-muted-navy shadow-md"
         >
-          Module {module.id}: {module.title}
+          <span className="min-w-0 truncate">
+            Module {module.id}: {module.title}
+          </span>
         </Badge>
       </div>
 

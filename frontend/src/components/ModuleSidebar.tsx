@@ -42,14 +42,16 @@ export default function ModuleSidebar() {
         <h1 className="pt-3 text-gray-500">Discrete Modules</h1>
       </SidebarHeader>
       {/* here, there should be a loop that renders each module. */}
-      <SidebarContent className="pl-5">
+      <SidebarContent>
         {modules?.map((mod) => (
-          <ModuleDropdown
-            key={mod.id}
-            module={mod}
-            open={openId === mod.id}
-            onOpenChange={(open) => setOpenId(open ? mod.id : null)}
-          />
+          <div className="w-[90%]">
+            <ModuleDropdown
+              key={mod.id}
+              module={mod}
+              open={openId === mod.id}
+              onOpenChange={(open) => setOpenId(open ? mod.id : null)}
+            />
+          </div>
         ))}
       </SidebarContent>
     </Sidebar>

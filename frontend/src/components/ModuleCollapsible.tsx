@@ -2,15 +2,12 @@
 
 import { Link, useParams } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
-import { cn } from 'cn'
-import {
-  Collapsible,
-  CollapsibleContent,
-} from '@/components/ui/collapsible'
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
+  SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from '@/components/ui/sidebar'
 import { useModule } from '@/hooks/use-modules'
@@ -48,13 +45,16 @@ export default function ModuleCollapsible({
           aria-expanded={open}
           aria-controls={`module-${module.id}-lessons`}
           onClick={() => onOpenChange(!open)}
+          className="rounded-none"
         >
-          <span>{module.title}</span>
-          <ChevronRight className="ml-auto transition-transform duration-150 group-data-open/collapsible:rotate-90" />
+          <span className="min-w-0 flex-1 truncate">
+            {module.id}. {module.title}
+          </span>
+          <ChevronRight className="ml-auto shrink-0 transition-transform duration-150 group-data-open/collapsible:rotate-90" />
         </SidebarMenuButton>
 
         <CollapsibleContent id={`module-${module.id}-lessons`}>
-          <SidebarMenuSub className="list-none">
+          <SidebarMenuSub className="mx-0 w-full translate-x-0 border-l-0 px-0 py-0">
             {lessonsLoading && (
               <li className="px-2 py-1 text-sm">Loading lessons...</li>
             )}
@@ -72,16 +72,17 @@ export default function ModuleCollapsible({
             )}
             {details?.lessons.map((lesson) => (
               <SidebarMenuSubItem key={lesson.id} className="list-none">
-                <Link
-                  to={`/modules/${module.id}/lessons/${lesson.id}`}
-                  data-size="md"
-                  data-active={lesson.id === Number(lessonId) ? '' : undefined}
-                  className={cn(
-                    'flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-xl px-3 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-sm data-[size=sm]:text-xs data-[active]:bg-sidebar-accent data-[active]:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground',
-                  )}
+                <SidebarMenuSubButton
+                  render={
+                    <Link to={`/modules/${module.id}/lessons/${lesson.id}`} />
+                  }
+                  isActive={lesson.id === Number(lessonId)}
+                  className="h-7 w-full items-center overflow-hidden rounded-none whitespace-nowrap pl-8"
                 >
-                  {lesson.title}
-                </Link>
+                  <span className="min-w-0 flex-1 truncate">
+                    {lesson.id}. {lesson.title}
+                  </span>
+                </SidebarMenuSubButton>
               </SidebarMenuSubItem>
             ))}
             {details?.lessons.length === 0 && (
