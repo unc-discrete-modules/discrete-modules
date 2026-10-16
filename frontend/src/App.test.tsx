@@ -1,14 +1,17 @@
 import '@testing-library/jest-dom/vitest'
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
 describe('App', () => {
   afterEach(() => {
+    cleanup()
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   it('renders the home page greeting and module cards', () => {
+    vi.stubEnv('VITE_API_URL', 'http://localhost:8080/api')
     vi.stubGlobal(
       'matchMedia',
       vi.fn().mockReturnValue({

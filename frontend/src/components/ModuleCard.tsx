@@ -2,11 +2,11 @@
 import { Progress } from './ui/progress'
 import { Card, CardContent } from './ui/card'
 import { Label } from './ui/label'
-import type { Module } from '@/types/types'
+import type { ModuleSummary } from '@/types/types'
 import { Badge } from './ui/badge'
 
 type ModuleCardProps = {
-  module: Module
+  module: ModuleSummary
 }
 
 const progress = 60 // placeholder value

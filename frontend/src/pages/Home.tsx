@@ -1,43 +1,11 @@
 /** Landing page that displays modules */
 
 import ModuleCard from '@/components/ModuleCard'
-
-const mockModules = [
-  {
-    id: 1,
-    title: 'Mock Module 1',
-    description: 'Statements, connectives, and implications.',
-    display_order: 0,
-    lessons: [
-      { id: 1, title: 'Mock L1' },
-      { id: 2, title: 'Mock L2' },
-    ],
-  },
-  {
-    id: 2,
-    title: 'Mock Module 2',
-    description: 'Sets and their operations.',
-    display_order: 1,
-    lessons: [
-      { id: 3, title: 'Mock L1' },
-      { id: 4, title: 'Mock L2' },
-    ],
-  },
-  {
-    id: 3,
-    title: 'Mock Module 3',
-    description: 'Ordered pairs, relations, and function properties.',
-    display_order: 2,
-    lessons: [
-      { id: 5, title: 'Mock L1' },
-      { id: 6, title: 'Mock L2' },
-    ],
-  },
-]
-
-const modules = mockModules
+import { useModules } from '@/hooks/use-modules'
 
 export default function Home() {
+  const { modules } = useModules()
+
   return (
     <>
       <h1 className="text-3xl ml-10 mt-5 font-bold text-muted-navy">
