@@ -38,7 +38,7 @@ describe('Authentication', () => {
       expect.arrayContaining(['/api/auth/me']),
     )
     expect(
-      screen.queryByRole('heading', { name: 'Home Page' }),
+      screen.queryByRole('heading', { name: /Welcome back,/ }),
     ).not.toBeInTheDocument()
   })
 
@@ -66,8 +66,9 @@ describe('Authentication', () => {
     vi.stubGlobal('fetch', fetch)
     render(<App />)
     expect(
-      await screen.findByRole('heading', { name: 'Home Page' }),
+      await screen.findByRole('heading', { name: /Welcome back,/ }),
     ).toBeInTheDocument()
+    expect(screen.getByText('Click on a card to begin.')).toBeInTheDocument()
     expect(screen.getByText(user.email)).toBeInTheDocument()
     expect(fetch).toHaveBeenCalledWith(
       '/api/modules',
@@ -178,7 +179,7 @@ describe('Authentication', () => {
       ),
     )
     render(<App />)
-    await screen.findByRole('heading', { name: 'Home Page' })
+    await screen.findByRole('heading', { name: /Welcome back,/ })
     await act(async () => {
       await apiFetch('/lessons/1')
     })
