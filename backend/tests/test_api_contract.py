@@ -2,11 +2,14 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.main import create_app
+from src.services.auth import require_user
 
 
 @pytest.fixture
-def client():
-    with TestClient(create_app()) as test_client:
+def client(authenticated_user):
+    app = create_app()
+    app.dependency_overrides[require_user] = lambda: authenticated_user
+    with TestClient(app) as test_client:
         yield test_client
 
 
@@ -31,6 +34,11 @@ def test_openapi_documents_every_contract_route():
         "/api/lessons/{lesson_id}",
         "/api/quizzes/{quiz_id}/submissions",
         "/api/healthz",
+        "/api/auth/login",
+        "/api/auth/metadata",
+        "/api/auth/me",
+        "/api/auth/logout",
+        "/api/auth/dev-login",
     }
     for path, method in [
         ("/api/modules/{module_id}", "get"),

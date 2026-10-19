@@ -29,9 +29,8 @@ in the ignored `.env` file, never in version control.
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` configure Postgres.
 - `DATABASE_URL` is for running FastAPI directly outside Compose.
 - `ALLOWED_ORIGINS` is the JSON list of browser origins FastAPI may allow.
-- `VITE_API_URL` is the API URL compiled into the client; local Compose uses
-  the published API at `http://localhost:8080`, while production images default
-  to the same-origin `/api` proxy.
+- `VITE_BACKEND_TARGET` selects the Vite proxy's backend when running directly;
+  Compose sets it to the internal backend service. Browser requests use `/api`.
 
 ### Database commands
 
@@ -67,7 +66,14 @@ docker build -t discrete-modules-backend backend
 Both images run as non-root and listen on port 8080 for OpenShift compatibility.
 The production frontend is a static NGINX server with an `index.html` fallback
 for client-side routes. It also proxies `/api` and `/saml/acs` to a separately
-deployed internal API Service. Override `VITE_API_URL` at build time when
-necessary; production defaults to the same-origin `/api` proxy. The current
-client does not yet make API requests, but that variable is ready for its first
-API integration.
+deployed internal API Service. Browser requests use the same-origin `/api` proxy.
+
+## UNC sign-in
+
+All learning pages and content APIs require a signed-in session. See
+[the SAML setup guide](backend/saml/README.md) for certificate configuration,
+email mapping, session behavior, and integration checks. The login page temporarily offers **Sign in as demo user**
+(`demo@example.test`) in all environments, including production. When running
+FastAPI directly over local HTTP, use the development settings in
+`backend/.env.example`. The database must be migrated first. No SAML
+certificates or UNC connection are required for demo login.

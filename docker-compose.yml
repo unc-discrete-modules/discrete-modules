@@ -5,7 +5,7 @@ services:
       target: development
     command: npm run dev -- --host 0.0.0.0
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api}
+      VITE_BACKEND_TARGET: http://backend:8080
     ports:
       - "5173:5173"
     volumes:
@@ -22,6 +22,10 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-discrete_modules}:${POSTGRES_PASSWORD:-discrete_modules}@postgres:5432/${POSTGRES_DB:-discrete_modules}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-["http://localhost:5173"]}
+      ENVIRONMENT: development
+      PUBLIC_ORIGIN: http://localhost:5173
+      AUTH_COOKIE_SECURE: "false"
+      SAML_IDP_METADATA_PATH: /app/saml/unc-idp.xml
       POSTGRES_USER: ${POSTGRES_USER:-discrete_modules}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-discrete_modules}
       POSTGRES_DB: ${POSTGRES_DB:-discrete_modules}
@@ -41,7 +45,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-discrete_modules}
       POSTGRES_DB: ${POSTGRES_DB:-discrete_modules}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

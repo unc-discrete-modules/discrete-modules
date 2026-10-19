@@ -54,6 +54,24 @@ oc create secret generic database-credentials \
 unset DB_PASSWORD DB_PASSWORD_ENCODED
 ```
 
+Create the SAML Secret from the existing local files. Confirm UNC registered the
+same public certificate before enabling sign-in:
+
+```sh
+openssl x509 -in keys/saml-certs/sp.crt -noout -fingerprint -sha256
+oc create secret generic saml-credentials \
+  --from-file=sp.crt=keys/saml-certs/sp.crt \
+  --from-file=sp.key=keys/saml-certs/sp.key
+```
+
+The Secret is mounted read-only into the backend. Confirm the OpenShift-assigned
+group can read the mounted files (mode 0440). Configure `SAML_EMAIL_SOURCE` in
+`deploy/configmap.yaml` after confirming whether UNC returns email as an
+email-format NameID (`nameid`) or an attribute (`attribute`, also requiring
+`SAML_EMAIL_ATTRIBUTE`). The checked-in configuration deliberately leaves this
+unset, so sign-in fails closed until confirmed. See the
+[SAML guide](../backend/saml/README.md) for integration and renewal procedures.
+
 To rotate a Secret, replace `oc create secret ...` with the same command plus
 `--dry-run=client -o yaml | oc apply -f -`, then restart the affected
 Deployments. Changing PostgreSQL's password Secret after database initialization
@@ -93,7 +111,7 @@ oc get pods,services,pvc,route
 
 The public site is served at
 <https://discrete-modules.apps.cloudapps.unc.edu/>. NGINX forwards `/api` to
-FastAPI and preserves `/saml/acs` for the future SAML callback.
+FastAPI and forwards `/saml/acs` to the SAML callback.
 
 ## Smoke tests
 
@@ -108,8 +126,10 @@ curl -fsS https://discrete-modules.apps.cloudapps.unc.edu/api/docs >/dev/null
 curl -i -X POST https://discrete-modules.apps.cloudapps.unc.edu/saml/acs
 ```
 
-The final request currently returns FastAPI's JSON `404 Not Found`; that proves
-NGINX forwarded the callback instead of serving the SPA.
+With a configured database, the final request redirects to
+`/login?error=sso_failed` because it has no SAML response. Learning APIs return
+401 without a session. Also verify `/api/auth/metadata`, then complete the
+browser login/logout checks in the SAML guide.
 
 To verify persistent storage, create a marker, replace the PostgreSQL pod, and
 confirm the marker remains before removing it:

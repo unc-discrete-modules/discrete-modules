@@ -11,8 +11,10 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-install-project --no-dev
+RUN python -c "import xmlsec; from onelogin.saml2.auth import OneLogin_Saml2_Auth"
 
 COPY src ./src
+COPY saml ./saml
 COPY alembic.ini ./
 COPY migrations ./migrations
 
@@ -22,7 +24,9 @@ WORKDIR /app
 ENV UV_LINK_MODE=copy
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked
+RUN uv run python -c "import xmlsec; from onelogin.saml2.auth import OneLogin_Saml2_Auth"
 COPY src ./src
+COPY saml ./saml
 EXPOSE 8000
 CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 

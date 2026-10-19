@@ -2,6 +2,12 @@ import pytest
 from sqlmodel import Session, create_engine
 
 from src.config import Settings
+from src.services.auth import AuthenticatedUser
+
+
+@pytest.fixture
+def authenticated_user():
+    return AuthenticatedUser(1, "student@example.unc.edu", "test-csrf", "test-hash")
 
 
 @pytest.fixture

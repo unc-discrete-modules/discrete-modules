@@ -6,14 +6,16 @@ from fastapi.testclient import TestClient
 from src.database import get_db_session
 from src.main import create_app
 from src.models import Lesson, Module, Quiz
+from src.services.auth import require_user
 
 UNUSED_ID = 2_000_000_000
 
 
 @pytest.fixture
-def client(db_session):
+def client(db_session, authenticated_user):
     app = create_app()
     app.dependency_overrides[get_db_session] = lambda: db_session
+    app.dependency_overrides[require_user] = lambda: authenticated_user
     with TestClient(app) as test_client:
         yield test_client
 

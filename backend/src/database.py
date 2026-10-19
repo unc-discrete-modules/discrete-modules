@@ -1,7 +1,9 @@
 from collections.abc import Iterator
 from functools import lru_cache
 
+from fastapi import HTTPException
 from sqlalchemy import Engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, create_engine
 
 from src.config import Settings
@@ -16,5 +18,8 @@ def get_engine() -> Engine:
 
 
 def get_db_session() -> Iterator[Session]:
-    with Session(get_engine()) as session:
-        yield session
+    try:
+        with Session(get_engine()) as session:
+            yield session
+    except (RuntimeError, SQLAlchemyError) as exc:
+        raise HTTPException(503, "Database unavailable") from exc

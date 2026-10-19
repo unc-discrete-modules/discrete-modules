@@ -32,6 +32,10 @@ Settings are available on `app.state.settings`. CORS allows only the origins
 in `ALLOWED_ORIGINS`; a wildcard is rejected at startup.
 Keep actual credentials in environment variables or the ignored `.env` file.
 
+Learning APIs require UNC login. See [the SAML guide](saml/README.md) for the
+required certificate and email mapping configuration, session endpoints, and
+local testing. Missing SAML configuration never grants anonymous learning access.
+
 ## Database migrations
 
 Start PostgreSQL and apply all migrations before using database-backed features:
