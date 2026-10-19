@@ -10,24 +10,14 @@ describe('App', () => {
     vi.unstubAllEnvs()
   })
 
-  it('renders the home page greeting and module cards', () => {
-    vi.stubEnv('VITE_API_URL', 'http://localhost:8080/api')
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn().mockReturnValue({
-        matches: false,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      }),
-    )
-
+  it('renders the login page', () => {
     render(<App />)
 
     expect(
-      screen.getByRole('heading', {
-        name: /Welcome back,/,
-      }),
+      screen.getByRole('heading', { name: 'Welcome to Discrete Modules' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Click on a card to begin.')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Login with UNC SSO' }),
+    ).toBeInTheDocument()
   })
 })

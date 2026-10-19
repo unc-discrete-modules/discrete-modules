@@ -4,13 +4,10 @@ import Lesson from './pages/Lesson'
 import Module from './pages/Module'
 import Layout from './components/Layout'
 import { CourseProvider } from './context/course-context'
+import Login from './pages/Login'
 
 function Quiz() {
   return <h1>Quiz View</h1>
-}
-
-function Login() {
-  return <h1>Login</h1>
 }
 
 function App() {
@@ -20,10 +17,10 @@ function App() {
         <CourseProvider>
           <Routes>
             {/* the login page should not display a sidebar. */}
-            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<Login />} />
 
             <Route element={<Layout />}>
-              <Route path="/" element={<Home />} />
+              <Route path="/modules" element={<Home />} />
               <Route path="/modules/:moduleId" element={<Module />} />
               <Route
                 path="/modules/:moduleId/lessons/:lessonId"
