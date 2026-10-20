@@ -11,7 +11,7 @@ export default function Home() {
       <h1 className="text-3xl ml-10 mt-5 font-bold text-muted-navy">
         Welcome back, PlaceholderUsername
       </h1>
-      <div className="ml-20">
+      <div className="mx-10">
         <h4 className="py-5 text-gray-500">Click on a card to begin.</h4>
         {/* module card grid */}
         <div className="grid grid-cols-3 grid-rows-auto gap-x-[5%] gap-y-15">
