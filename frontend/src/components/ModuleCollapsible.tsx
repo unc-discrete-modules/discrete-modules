@@ -56,7 +56,7 @@ export default function ModuleCollapsible({
         <CollapsibleContent id={`module-${module.id}-lessons`}>
           <SidebarMenuSub className="mx-0 w-full translate-x-0 border-l-0 px-0 py-0">
             {lessonsLoading && (
-              <li className="px-2 py-1 text-sm">Loading lessons...</li>
+              <li className="py-1 pl-8 pr-2 text-sm">Loading lessons...</li>
             )}
             {lessonsError && (
               <li role="alert" className="px-2 py-1 text-sm">

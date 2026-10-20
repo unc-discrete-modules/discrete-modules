@@ -16,7 +16,7 @@ export default function ModuleSidebar() {
         <SidebarHeader className="items-center justify-center text-2xl font-bold m-3">
           <h1 className="pt-3 text-gray-500">Discrete Modules</h1>
         </SidebarHeader>
-        <div>
+        <div className="items-center text-center">
           <h2 className="pt-3 text-gray-500">Loading...</h2>
         </div>
       </Sidebar>
@@ -29,7 +29,7 @@ export default function ModuleSidebar() {
         <SidebarHeader className="items-center justify-center text-2xl font-bold m-3">
           <h1 className="pt-3 text-gray-500">Discrete Modules</h1>
         </SidebarHeader>
-        <div>
+        <div className="items-center text-center">
           <h2 className="pt-3 text-gray-500">Error: {error.message}</h2>
         </div>
       </Sidebar>
@@ -42,7 +42,7 @@ export default function ModuleSidebar() {
         <h1 className="pt-3 text-gray-500">Discrete Modules</h1>
       </SidebarHeader>
       {/* here, there should be a loop that renders each module. */}
-      <SidebarContent>
+      <SidebarContent className="items-center">
         {modules?.map((mod) => (
           <div className="w-[90%]">
             <ModuleDropdown
