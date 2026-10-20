@@ -12,16 +12,20 @@ export type LessonSummary = {
   title: string
 }
 
-export type Module = {
+export type ModuleSummary = {
   id: number
   title: string
   description: string
   display_order: number
-  lessons: LessonSummary[]
+}
+
+export type Module = ModuleSummary & {
+  has_quiz: boolean
+  lessons: Lesson[]
 }
 
 export type CourseContextValue = {
-  modules: Module[] | null
+  modules: ModuleSummary[] | null
   loading: boolean
   error: Error | null
 }

@@ -1,24 +1,31 @@
 // src/context/course-context.tsx
 import { useEffect, useState } from 'react'
-import type { Module } from '@/types/types'
+import { fetchModuleSummaries } from '@/api/modules'
+import type { ModuleSummary } from '@/types/types'
 import { CourseContext } from './course-context-value'
 
-console.log('yo', import.meta.env.VITE_API_URL)
-
 export function CourseProvider({ children }: { children: React.ReactNode }) {
-  const [modules, setModules] = useState<Module[] | null>(null)
+  const [modules, setModules] = useState<ModuleSummary[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/modules`)
-      .then((resp) => {
-        if (!resp.ok) throw new Error(`Failed: ${resp.status}`)
-        return resp.json()
-      })
+    const controller = new AbortController()
+    fetchModuleSummaries(controller.signal)
       .then(setModules)
-      .catch(setError)
-      .finally(() => setLoading(false))
+      .catch((reason: unknown) => {
+        if (!controller.signal.aborted) {
+          setError(
+            reason instanceof Error
+              ? reason
+              : new Error('Failed to load modules'),
+          )
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
+    return () => controller.abort()
   }, [])
 
   return (

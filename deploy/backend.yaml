@@ -68,6 +68,13 @@ spec:
                 configMapKeyRef:
                   name: app-config
                   key: ALLOWED_ORIGINS
+          envFrom:
+            - configMapRef:
+                name: app-config
+          volumeMounts:
+            - name: saml-credentials
+              mountPath: /var/run/saml
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /api/healthz
@@ -97,6 +104,11 @@ spec:
               drop:
                 - ALL
             runAsNonRoot: true
+      volumes:
+        - name: saml-credentials
+          secret:
+            secretName: saml-credentials
+            defaultMode: 0440
 ---
 apiVersion: v1
 kind: Service

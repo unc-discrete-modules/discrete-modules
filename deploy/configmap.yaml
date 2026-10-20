@@ -6,3 +6,9 @@ metadata:
     app.kubernetes.io/name: discrete-modules
 data:
   ALLOWED_ORIGINS: '["https://discrete-modules.apps.cloudapps.unc.edu"]'
+  ENVIRONMENT: production
+  PUBLIC_ORIGIN: https://discrete-modules.apps.cloudapps.unc.edu
+  AUTH_COOKIE_SECURE: "true"
+  SAML_IDP_METADATA_PATH: /app/saml/unc-idp.xml
+  SAML_SP_CERTIFICATE_PATH: /var/run/saml/sp.crt
+  SAML_SP_PRIVATE_KEY_PATH: /var/run/saml/sp.key
