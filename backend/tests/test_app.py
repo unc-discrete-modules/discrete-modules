@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
 
+from src.database import get_db_session
 from src.main import create_app
 
 
@@ -56,13 +57,16 @@ def test_api_documentation_paths():
     assert "/api/" in schema_response.json()["paths"]
 
 
-def test_unprefixed_and_reserved_routes_are_not_implemented():
-    with TestClient(create_app()) as client:
+def test_root_is_unimplemented_and_empty_saml_callback_fails_safely():
+    app = create_app()
+    app.dependency_overrides[get_db_session] = lambda: None
+    with TestClient(app) as client:
         root_response = client.get("/")
-        saml_response = client.post("/saml/acs")
+        saml_response = client.post("/saml/acs", follow_redirects=False)
 
     assert root_response.status_code == 404
-    assert saml_response.status_code == 404
+    assert saml_response.status_code == 303
+    assert saml_response.headers["location"] == "/login?error=sso_failed"
 
 
 @pytest.mark.parametrize(

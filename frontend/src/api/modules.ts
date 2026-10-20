@@ -1,4 +1,5 @@
 import type { Module, ModuleSummary } from '@/types/types'
+import { apiFetch } from '@/api'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -36,10 +37,7 @@ async function fetchApiData<T>(
   resource: string,
   signal?: AbortSignal,
 ): Promise<T> {
-  const apiUrl = import.meta.env.VITE_API_URL
-  if (!apiUrl) throw new Error('VITE_API_URL must be set')
-
-  const response = await fetch(`${apiUrl}${path}`, { signal })
+  const response = await apiFetch(path, { signal })
   if (!response.ok) {
     throw new Error(`Failed to load ${resource}: ${response.status}`)
   }

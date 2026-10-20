@@ -4,15 +4,18 @@ from pydantic import ValidationError
 
 from src.config import Settings
 from src.main import create_app
+from src.services.auth import require_user
 
 LOCAL_ORIGIN = "http://localhost:5173"
 CLOUD_APPS_ORIGIN = "https://discrete-modules.apps.cloudapps.unc.edu"
 
 
 @pytest.fixture
-def client(monkeypatch):
+def client(monkeypatch, authenticated_user):
     monkeypatch.setenv("ALLOWED_ORIGINS", f'["{LOCAL_ORIGIN}", "{CLOUD_APPS_ORIGIN}"]')
-    with TestClient(create_app()) as test_client:
+    app = create_app()
+    app.dependency_overrides[require_user] = lambda: authenticated_user
+    with TestClient(app) as test_client:
         yield test_client
 
 

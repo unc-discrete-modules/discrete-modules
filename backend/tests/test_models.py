@@ -36,6 +36,10 @@ def test_models_register_expected_tables_and_relationships():
         "modules",
         "questions",
         "quizzes",
+        "users",
+        "auth_sessions",
+        "login_transactions",
+        "saml_replays",
     }
     assert Module.lessons.property.back_populates == "module"
     assert Module.quiz.property.uselist is False

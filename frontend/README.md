@@ -19,6 +19,20 @@ npm run dev
 
 The Vite development server normally uses `http://localhost:5173`. Use `npm run dev` to start the server.
 
+The client checks `/api/auth/me` before loading learning pages or course data.
+Anonymous visitors go to `/login`; expired sessions return there with the current
+page saved. API requests use same-origin `/api` through NGINX in production and
+Vite's proxy locally. Set `VITE_BACKEND_TARGET` in `frontend/.env.local` when the
+local backend is not at `http://localhost:8000`. See the
+[SAML guide](../backend/saml/README.md) for authentication setup and testing.
+
+The login page temporarily has a **Sign in as demo user** button in all
+builds, including production. It signs in as `demo@example.test` without UNC
+SSO. The backend and a migrated database must be running. For local HTTP, use
+the development settings in `backend/.env.example`.
+
+TODO: Remove demo login once UNC sign-in is ready for general use.
+
 All pages can be found in `frontend/src/pages`, while components are stored in `frontend/src/components`.
 
 ## Routing Guide
