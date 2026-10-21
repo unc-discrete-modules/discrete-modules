@@ -16,15 +16,13 @@ def get_lesson(session: Session, lesson_id: int) -> Lesson | None:
             .order_by(models.Lesson.position)
         )
     )
-    lesson_index = next(index for index, lesson in enumerate(lessons) if lesson.id == row.id)
-
-    previous_lesson_id = (
-        lessons[lesson_index - 1].id if lesson_index > 0 else None
+    lesson_index = next(
+        index for index, lesson in enumerate(lessons) if lesson.id == row.id
     )
+
+    previous_lesson_id = lessons[lesson_index - 1].id if lesson_index > 0 else None
     next_lesson_id = (
-        lessons[lesson_index + 1].id
-        if lesson_index < len(lessons) - 1
-        else None
+        lessons[lesson_index + 1].id if lesson_index < len(lessons) - 1 else None
     )
 
     return Lesson(
