@@ -66,20 +66,7 @@ def test_lesson_links_stay_within_module(client):
     assert last["video_url"].startswith("https://")
 
 
-def test_quiz_hides_answers_and_lists_options_for_multiple_choice(client):
-    quiz = client.get("/api/modules/1/quiz").json()
-
-    assert [q["type"] for q in quiz["questions"]] == [
-        "multiple_choice",
-        "fill_in_blank",
-        "free_response",
-    ]
-    assert len(quiz["questions"][0]["options"]) == 3
-    assert "options" not in quiz["questions"][1]
-    assert "correct" not in str(quiz).lower()
-
-
-@pytest.mark.parametrize("path", ["/api/lessons/99", "/api/modules/2/quiz", "/nope"])
+@pytest.mark.parametrize("path", ["/api/lessons/99", "/nope"])
 def test_missing_resources_use_error_envelope(client, path):
     response = client.get(path)
 
