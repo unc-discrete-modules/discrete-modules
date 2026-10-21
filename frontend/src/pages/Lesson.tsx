@@ -5,7 +5,7 @@ import LessonNavigation from '@/components/lesson/LessonNavigation'
 import LessonVideo from '@/components/lesson/LessonVideo'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLesson } from '@/hooks/use-lesson'
-import { splitLessonSections } from '@/lib/lesson-content'
+import { splitLessonSections } from '../lib/lesson-content'
 
 export default function Lesson() {
   const { moduleId, lessonId } = useParams()

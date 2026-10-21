@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getLesson } from '@/lib/api'
-import type { Lesson } from '@/types/types'
+import { getLesson } from '../lib/api'
+import type { Lesson } from '../types/types'
 
 export function useLesson(lessonId?: string) {
   const parsedLessonId = Number(lessonId)
