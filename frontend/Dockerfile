@@ -3,10 +3,10 @@
 FROM node:24-alpine AS development
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
-COPY . .
+COPY frontend .
 
 EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
@@ -14,15 +14,15 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 FROM node:24-alpine AS build
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
-COPY . .
+COPY frontend .
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:alpine AS production
 USER root
-COPY nginx.conf /etc/nginx/nginx.conf
+COPY frontend/nginx.conf /etc/nginx/nginx.conf
 COPY --from=build --chown=101:0 /app/dist /usr/share/nginx/html
 
 # OpenShift supplies an arbitrary user in group 0.

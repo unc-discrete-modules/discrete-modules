@@ -56,17 +56,18 @@ for backend prerequisites and use `npm ci && npm run dev` from `frontend/`.
 
 ## Production images
 
-Build either image from its service directory:
+Build either image from the repository root:
 
 ```sh
-docker build -t discrete-modules-frontend frontend
-docker build -t discrete-modules-backend backend
+docker build -f frontend/Dockerfile -t discrete-modules-frontend .
+docker build -f backend/Dockerfile -t discrete-modules-backend .
 ```
 
 Both images run as non-root and listen on port 8080 for OpenShift compatibility.
 The production frontend is a static NGINX server with an `index.html` fallback
 for client-side routes. It also proxies `/api` and `/saml/acs` to a separately
-deployed internal API Service. Browser requests use the same-origin `/api` proxy.
+deployed internal API Service. Lesson images are served at `/api/content/` and
+are versioned with the backend image. Browser requests use same-origin paths.
 
 ## UNC sign-in
 
