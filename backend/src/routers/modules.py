@@ -8,7 +8,6 @@ from src.errors import INVALID, NOT_FOUND
 from src.schemas.module import Module, ModuleSummary
 from src.schemas.quiz import Quiz
 from src.services import modules as module_service
-from src.services import stub_content
 
 router = APIRouter(prefix="/modules", tags=["modules"])
 
@@ -39,8 +38,8 @@ def get_module(module_id: int, session: SessionDep) -> Module:
     summary="Get a module's quiz",
     responses=NOT_FOUND | INVALID,
 )
-def get_module_quiz(module_id: int) -> Quiz:
-    quiz_id = stub_content.QUIZ_BY_MODULE.get(module_id)
-    if quiz_id is None:
+def get_module_quiz(module_id: int, session: SessionDep) -> Quiz:
+    quiz = module_service.get_quiz(session, module_id)
+    if quiz is None:
         raise HTTPException(404, f"Module {module_id} has no quiz")
-    return stub_content.QUIZZES[quiz_id]
+    return quiz

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from src.database import get_db_session
 from src.main import create_app
-from src.models import Lesson, Module, Quiz
+from src.models import AnswerOption, Lesson, Module, Question, QuestionType, Quiz
 from src.services.auth import require_user
 
 UNUSED_ID = 2_000_000_000
@@ -44,6 +44,32 @@ def add_module(session, position, title="Sets", with_quiz=False, lessons=()):
         session.add(Quiz(module_id=module.id))
     session.flush()
     return module
+
+
+def add_question(session, module, position, question_type, options=(), expected=None):
+    """Insert a question; options are (text, is_correct, position) tuples."""
+    question = Question(
+        quiz_id=module.quiz.id,
+        key=f"question-{uuid4().hex}",
+        type=question_type,
+        prompt=f"Prompt {position}",
+        expected_answer=expected,
+        position=position,
+    )
+    session.add(question)
+    session.flush()
+    for text, is_correct, option_position in options:
+        session.add(
+            AnswerOption(
+                question_id=question.id,
+                key=f"option-{uuid4().hex}",
+                text=text,
+                is_correct=is_correct,
+                position=option_position,
+            )
+        )
+    session.flush()
+    return question
 
 
 def test_modules_are_listed_in_display_order(client, db_session):
@@ -123,3 +149,76 @@ def test_non_integer_module_id_is_422(client):
 
     assert response.status_code == 422
     assert response.json()["error"]["details"][0]["loc"] == ["path", "module_id"]
+
+
+def test_quiz_lists_questions_and_options_in_order(client, db_session):
+    module = add_module(db_session, 1_900_000_005, with_quiz=True)
+    essay = add_question(
+        db_session, module, 2, QuestionType.FREE_RESPONSE, expected="Model."
+    )
+    blank = add_question(
+        db_session, module, 1, QuestionType.FILL_IN_BLANK, expected="answer"
+    )
+    choice = add_question(
+        db_session,
+        module,
+        0,
+        QuestionType.MULTIPLE_CHOICE,
+        options=[("Second", True, 1), ("First", False, 0)],
+    )
+    db_session.refresh(module)
+    option_ids = {option.text: option.id for option in choice.answer_options}
+
+    response = client.get(f"/api/modules/{module.id}/quiz")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": module.quiz.id,
+        "questions": [
+            {
+                "id": choice.id,
+                "type": "multiple_choice",
+                "prompt": "Prompt 0",
+                "options": [
+                    {"id": option_ids["First"], "text": "First"},
+                    {"id": option_ids["Second"], "text": "Second"},
+                ],
+            },
+            {"id": blank.id, "type": "fill_in_blank", "prompt": "Prompt 1"},
+            {"id": essay.id, "type": "free_response", "prompt": "Prompt 2"},
+        ],
+    }
+
+
+def test_quiz_never_includes_answers(client, db_session):
+    module = add_module(db_session, 1_900_000_006, with_quiz=True)
+    add_question(
+        db_session,
+        module,
+        0,
+        QuestionType.MULTIPLE_CHOICE,
+        options=[("Right", True, 0), ("Wrong", False, 1)],
+    )
+    add_question(db_session, module, 1, QuestionType.FILL_IN_BLANK, expected="secret-1")
+    add_question(db_session, module, 2, QuestionType.FREE_RESPONSE, expected="secret-2")
+
+    body = client.get(f"/api/modules/{module.id}/quiz").text
+
+    for leaked in ("secret-1", "secret-2", "is_correct", "expected_answer", "correct"):
+        assert leaked not in body
+
+
+def test_quiz_for_module_without_quiz_is_404(client, db_session):
+    module = add_module(db_session, 1_900_000_007)
+
+    response = client.get(f"/api/modules/{module.id}/quiz")
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "not_found"
+
+
+def test_quiz_for_unknown_module_is_404(client):
+    response = client.get(f"/api/modules/{UNUSED_ID}/quiz")
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "not_found"
