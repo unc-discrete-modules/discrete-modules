@@ -55,7 +55,11 @@ def _grade_multiple_choice(
         raise SubmissionError(
             f"Option {answer.option_id} does not belong to question {question.id}"
         )
-    correct = next(option for option in options.values() if option.is_correct)
+    correct = next((option for option in options.values() if option.is_correct), None)
+    if correct is None:
+        # The schema allows zero correct options; that is bad content, not a
+        # bad submission, so it must not look like a client error.
+        raise RuntimeError(f"Question {question.id} has no correct option")
     return QuestionResult(
         question_id=question.id,
         correct=answer.option_id == correct.id,

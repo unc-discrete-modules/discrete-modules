@@ -144,6 +144,17 @@ def test_submission_that_does_not_match_the_quiz_is_rejected(quiz, answers):
         grade_submission(quiz, submission(*answers))
 
 
+def test_question_without_a_correct_option_is_a_server_error(quiz):
+    for option in quiz[0].answer_options:
+        option.is_correct = False
+
+    with pytest.raises(RuntimeError, match="no correct option"):
+        grade_submission(
+            quiz,
+            submission(mc(1, 12), text(2, "x"), text(3, "y", "free_response")),
+        )
+
+
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [("  A  b\tC\n", "a b c"), ("", ""), ("$\\neg  p$", "$\\neg p$")],
