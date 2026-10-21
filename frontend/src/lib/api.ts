@@ -1,9 +1,8 @@
+import { apiFetch } from '@/api'
 import type { Lesson } from '@/types/types'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
-
 async function requestJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`)
+  const response = await apiFetch(path)
 
   if (!response.ok) {
     throw new Error(`Request failed with status ${response.status}`)
