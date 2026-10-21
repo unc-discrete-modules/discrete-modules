@@ -19,7 +19,15 @@ from sqlmodel import Session, create_engine, select
 from src.config import Settings
 from src.database import get_db_session
 from src.main import create_app
-from src.models import AuthSession, LoginTransaction, SamlReplay, User
+from src.models import (
+    AuthSession,
+    Lesson,
+    LoginTransaction,
+    ModelBase,
+    Module,
+    SamlReplay,
+    User,
+)
 from src.services.auth import (
     SESSION_COOKIE,
     TRANSACTION_COOKIE,
@@ -62,8 +70,22 @@ def auth_engine(tmp_path, monkeypatch):
     engine = create_engine(
         f"sqlite:///{tmp_path / 'auth.db'}", connect_args={"check_same_thread": False}
     )
-    for model in (User, AuthSession, LoginTransaction, SamlReplay):
-        model.__table__.create(engine)
+    ModelBase.metadata.create_all(engine)
+    with Session(engine) as db:
+        module = Module(key="auth-test", title="Auth", description="Auth", position=0)
+        db.add(module)
+        db.flush()
+        db.add(
+            Lesson(
+                id=1,
+                module_id=module.id,
+                key="auth-test",
+                title="Auth",
+                body="Body",
+                position=0,
+            )
+        )
+        db.commit()
     monkeypatch.setattr("src.services.auth.get_engine", lambda: engine)
     yield engine
     engine.dispose()

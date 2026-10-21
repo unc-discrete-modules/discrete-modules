@@ -1,14 +1,16 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from src.database import get_db_session
 from src.main import create_app
 from src.services.auth import require_user
 
 
 @pytest.fixture
-def client(authenticated_user):
+def client(authenticated_user, app_database):
     app = create_app()
     app.dependency_overrides[require_user] = lambda: authenticated_user
+    app.dependency_overrides[get_db_session] = app_database
     with TestClient(app) as test_client:
         yield test_client
 

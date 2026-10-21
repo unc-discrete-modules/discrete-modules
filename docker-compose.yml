@@ -33,6 +33,7 @@ services:
       - "8080:8080"
     volumes:
       - ./backend:/app
+      - ./content:/content:ro
       - backend_venv:/app/.venv
     depends_on:
       postgres:
