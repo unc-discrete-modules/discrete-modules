@@ -3,41 +3,49 @@ import { getLesson } from '@/lib/api'
 import type { Lesson } from '@/types/types'
 
 export function useLesson(lessonId?: string) {
-  const [lesson, setLesson] = useState<Lesson | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+  const parsedLessonId = Number(lessonId)
+  const validLessonId = Number.isSafeInteger(parsedLessonId) && parsedLessonId > 0
+  const [result, setResult] = useState<{
+    lessonId: number
+    lesson: Lesson | null
+    error: Error | null
+  } | null>(null)
 
   useEffect(() => {
-    const parsedLessonId = Number(lessonId)
-
-    if (!Number.isFinite(parsedLessonId)) {
-      setLesson(null)
-      setError(new Error('Lesson not found'))
-      setLoading(false)
-      return
-    }
+    if (!validLessonId) return
 
     let active = true
-    setLoading(true)
-    setError(null)
 
     getLesson(parsedLessonId)
       .then((data) => {
         if (!active) return
-        setLesson(data)
+        setResult({ lessonId: parsedLessonId, lesson: data, error: null })
       })
       .catch(() => {
         if (!active) return
-        setLesson(null)
-        setError(new Error('Unable to load this lesson.'))
+        setResult({
+          lessonId: parsedLessonId,
+          lesson: null,
+          error: new Error('Unable to load this lesson.'),
+        })
       })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
+
     return () => {
       active = false
     }
-  }, [lessonId])
+  }, [parsedLessonId, validLessonId])
 
-  return { lesson, loading, error }
+  if (!validLessonId) {
+    return {
+      lesson: null,
+      loading: false,
+      error: new Error('Lesson not found'),
+    }
+  }
+
+  if (result?.lessonId !== parsedLessonId) {
+    return { lesson: null, loading: true, error: null }
+  }
+
+  return { lesson: result.lesson, loading: false, error: result.error }
 }
