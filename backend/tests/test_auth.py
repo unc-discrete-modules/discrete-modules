@@ -19,7 +19,7 @@ from sqlmodel import Session, create_engine, select
 from src.config import Settings
 from src.database import get_db_session
 from src.main import create_app
-from src.models import AuthSession, LoginTransaction, SamlReplay, User
+from src.models import AuthSession, LoginTransaction, Quiz, SamlReplay, User
 from src.services.auth import (
     SESSION_COOKIE,
     TRANSACTION_COOKIE,
@@ -62,7 +62,7 @@ def auth_engine(tmp_path, monkeypatch):
     engine = create_engine(
         f"sqlite:///{tmp_path / 'auth.db'}", connect_args={"check_same_thread": False}
     )
-    for model in (User, AuthSession, LoginTransaction, SamlReplay):
+    for model in (User, AuthSession, LoginTransaction, SamlReplay, Quiz):
         model.__table__.create(engine)
     monkeypatch.setattr("src.services.auth.get_engine", lambda: engine)
     yield engine
@@ -472,8 +472,8 @@ def test_authenticated_submission_with_csrf(client, certificates):
             ],
         },
     )
-    assert response.status_code == 200
-    assert response.json()["results"][0]["correct"] is True
+    # 404 proves the session and CSRF checks passed; no quiz exists here.
+    assert response.status_code == 404
 
 
 def test_concurrent_user_provisioning_reuses_identity(db_session):

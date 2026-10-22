@@ -1,14 +1,11 @@
-from uuid import uuid4
-
 import pytest
 from fastapi.testclient import TestClient
 
 from src.database import get_db_session
 from src.main import create_app
-from src.models import AnswerOption, Lesson, Module, Question, QuestionType, Quiz
+from src.models import QuestionType
 from src.services.auth import require_user
-
-UNUSED_ID = 2_000_000_000
+from tests.helpers import UNUSED_ID, add_module, add_question
 
 
 @pytest.fixture
@@ -18,58 +15,6 @@ def client(db_session, authenticated_user):
     app.dependency_overrides[require_user] = lambda: authenticated_user
     with TestClient(app) as test_client:
         yield test_client
-
-
-def add_module(session, position, title="Sets", with_quiz=False, lessons=()):
-    """Insert a module with the given (title, position) lessons."""
-    module = Module(
-        key=f"test-{uuid4().hex}",
-        title=title,
-        description=f"About {title}.",
-        position=position,
-    )
-    session.add(module)
-    session.flush()
-    for lesson_title, lesson_position in lessons:
-        session.add(
-            Lesson(
-                module_id=module.id,
-                key=f"lesson-{uuid4().hex}",
-                title=lesson_title,
-                body="Body",
-                position=lesson_position,
-            )
-        )
-    if with_quiz:
-        session.add(Quiz(module_id=module.id))
-    session.flush()
-    return module
-
-
-def add_question(session, module, position, question_type, options=(), expected=None):
-    """Insert a question; options are (text, is_correct, position) tuples."""
-    question = Question(
-        quiz_id=module.quiz.id,
-        key=f"question-{uuid4().hex}",
-        type=question_type,
-        prompt=f"Prompt {position}",
-        expected_answer=expected,
-        position=position,
-    )
-    session.add(question)
-    session.flush()
-    for text, is_correct, option_position in options:
-        session.add(
-            AnswerOption(
-                question_id=question.id,
-                key=f"option-{uuid4().hex}",
-                text=text,
-                is_correct=is_correct,
-                position=option_position,
-            )
-        )
-    session.flush()
-    return question
 
 
 def test_modules_are_listed_in_display_order(client, db_session):
