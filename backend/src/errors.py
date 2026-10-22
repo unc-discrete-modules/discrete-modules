@@ -10,6 +10,7 @@ ERROR_CODES = {
     403: "forbidden",
     404: "not_found",
     422: "validation_error",
+    500: "internal_error",
     503: "service_unavailable",
 }
 
@@ -47,4 +48,13 @@ def register_error_handlers(app: FastAPI) -> None:
                 message="Request validation failed",
                 details=details,
             ),
+        )
+
+    # Starlette still re-raises after this response is sent, so the server logs
+    # the traceback; the body stays generic so internals never reach clients.
+    @app.exception_handler(Exception)
+    async def unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+        return _response(
+            500,
+            ErrorBody(code=ERROR_CODES[500], message="Internal server error"),
         )

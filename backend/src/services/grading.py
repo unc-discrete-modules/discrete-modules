@@ -1,6 +1,8 @@
 """Grade a quiz submission against loaded question rows."""
 
+from collections import Counter
 from collections.abc import Sequence
+from collections.abc import Set as AbstractSet
 
 from src.models import Question, QuestionType
 from src.schemas.submission import (
@@ -29,8 +31,7 @@ def grade_submission(
     """
     by_id = {question.id: question for question in questions}
     answers = {answer.question_id: answer for answer in submission.answers}
-    if len(answers) != len(submission.answers) or answers.keys() != by_id.keys():
-        raise SubmissionError("Submit exactly one answer for each question in the quiz")
+    _require_one_answer_each(by_id.keys(), submission)
 
     results = []
     for question in sorted(questions, key=lambda item: item.position):
@@ -45,6 +46,26 @@ def grade_submission(
         else:
             results.append(_grade_text(question, answer.text))
     return SubmissionResult(results=results)
+
+
+def _require_one_answer_each(
+    question_ids: AbstractSet[int], submission: SubmissionRequest
+) -> None:
+    submitted = Counter(answer.question_id for answer in submission.answers)
+    problems = [
+        f"{label} {', '.join(map(str, sorted(ids)))}"
+        for label, ids in (
+            ("Missing answers for questions", question_ids - submitted.keys()),
+            ("Not in this quiz: questions", submitted.keys() - question_ids),
+            (
+                "More than one answer for questions",
+                {question_id for question_id, n in submitted.items() if n > 1},
+            ),
+        )
+        if ids
+    ]
+    if problems:
+        raise SubmissionError("; ".join(problems))
 
 
 def _grade_multiple_choice(

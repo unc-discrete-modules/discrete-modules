@@ -161,3 +161,17 @@ def test_question_without_a_correct_option_is_a_server_error(quiz):
 )
 def test_normalize_text(raw, expected):
     assert normalize_text(raw) == expected
+
+
+def test_error_message_names_every_problem_question(quiz):
+    with pytest.raises(SubmissionError) as error:
+        grade_submission(
+            quiz,
+            submission(mc(1, 12), mc(1, 12), text(9, "x", "free_response")),
+        )
+
+    assert str(error.value) == (
+        "Missing answers for questions 2, 3; "
+        "Not in this quiz: questions 9; "
+        "More than one answer for questions 1"
+    )
