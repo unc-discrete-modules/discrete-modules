@@ -60,7 +60,7 @@ $$
   Tables are GitHub-flavoured.
 - Reference images relative to the module folder: `![Venn diagram](images/union.png)`.
   Always write alt text. The seed stores the path as
-  `/content/<module-folder>/images/union.png`.
+  `/api/content/<module-folder>/images/union.png`.
 
 ## Quizzes
 
@@ -122,7 +122,8 @@ Lesson bodies are stored as authored. A renderer must:
 - Parse math before Markdown (for example `remark-math`) so `\`, `_` and `*`
   inside `$...$` are not treated as Markdown, then typeset with MathJax.
 - Support GitHub-flavoured Markdown tables.
-- Serve this directory at `/content/` so image paths resolve.
+- Serve this directory at `/api/content/` so image paths resolve; the backend
+  does this, and the `/api` prefix is what the frontend proxy already forwards.
 
 The current lessons use `\cancel`, which needs MathJax's `cancel` extension
 loaded. Everything else they use (`\mathscr`, `\bigwedge`, `\choose`,

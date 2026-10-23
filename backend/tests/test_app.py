@@ -98,3 +98,26 @@ def test_app_loads_environment_settings(monkeypatch):
         == "postgresql+psycopg://localhost/discrete_modules"
     )
     assert app.state.settings.allowed_origins == ["http://localhost:5173"]
+
+
+def test_lesson_images_are_served_from_the_content_directory(tmp_path, monkeypatch):
+    image = tmp_path / "01-sets" / "images" / "venn.png"
+    image.parent.mkdir(parents=True)
+    image.write_bytes(b"\x89PNG")
+    monkeypatch.setenv("CONTENT_DIR", str(tmp_path))
+
+    with TestClient(create_app()) as client:
+        found = client.get("/api/content/01-sets/images/venn.png")
+        missing = client.get("/api/content/01-sets/images/nope.png")
+
+    assert found.status_code == 200
+    assert found.headers["content-type"] == "image/png"
+    assert found.content == b"\x89PNG"
+    assert missing.status_code == 404
+
+
+def test_app_starts_without_a_content_directory(tmp_path, monkeypatch):
+    monkeypatch.setenv("CONTENT_DIR", str(tmp_path / "absent"))
+
+    with TestClient(create_app()) as client:
+        assert client.get("/api/").status_code == 200

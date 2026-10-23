@@ -167,7 +167,7 @@ def _publish_images(body: str, folder: Path, where: str, problems: list[str]) ->
         if not (folder / "images" / match["path"]).is_file():
             problems.append(f"{where}: image not found: images/{match['path']}")
     return LOCAL_IMAGE.sub(
-        lambda match: f"](/content/{folder.name}/images/{match['path']})", body
+        lambda match: f"](/api/content/{folder.name}/images/{match['path']})", body
     )
 
 

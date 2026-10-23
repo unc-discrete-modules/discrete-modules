@@ -96,7 +96,7 @@ def test_image_links_point_at_the_served_content_path(content):
 
     body = load_content(content)[0].lessons[0].body
 
-    assert body == "![Venn](/content/01-sets/images/venn.png) and $x$."
+    assert body == "![Venn](/api/content/01-sets/images/venn.png) and $x$."
 
 
 @pytest.mark.parametrize(
