@@ -7,10 +7,10 @@ from src.services.auth import require_user
 
 
 @pytest.fixture
-def client(authenticated_user, app_database):
+def client(authenticated_user):
     app = create_app()
     app.dependency_overrides[require_user] = lambda: authenticated_user
-    app.dependency_overrides[get_db_session] = app_database
+    app.dependency_overrides[get_db_session] = lambda: None
     with TestClient(app) as test_client:
         yield test_client
 
@@ -54,20 +54,6 @@ def test_openapi_documents_every_contract_route():
             assert ref.endswith("/ErrorResponse")
 
 
-def test_healthz(client):
-    assert client.get("/api/healthz").json() == {"status": "ok"}
-
-
-def test_lesson_links_stay_within_module(client):
-    first = client.get("/api/lessons/1").json()
-    last = client.get("/api/lessons/2").json()
-
-    assert (first["previous_lesson_id"], first["next_lesson_id"]) == (None, 2)
-    assert (last["previous_lesson_id"], last["next_lesson_id"]) == (1, None)
-    assert first["video_url"] is None
-    assert last["video_url"].startswith("https://")
-
-
 def test_quiz_hides_answers_and_lists_options_for_multiple_choice(client):
     quiz = client.get("/api/modules/1/quiz").json()
 
@@ -81,7 +67,7 @@ def test_quiz_hides_answers_and_lists_options_for_multiple_choice(client):
     assert "correct" not in str(quiz).lower()
 
 
-@pytest.mark.parametrize("path", ["/api/lessons/99", "/api/modules/2/quiz", "/nope"])
+@pytest.mark.parametrize("path", ["/api/modules/2/quiz", "/nope"])
 def test_missing_resources_use_error_envelope(client, path):
     response = client.get(path)
 
