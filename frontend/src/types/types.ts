@@ -7,11 +7,6 @@ export type Lesson = {
   next_lesson_id: number | null
 }
 
-export type LessonSummary = {
-  id: number
-  title: string
-}
-
 export type ModuleSummary = {
   id: number
   title: string
