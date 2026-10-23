@@ -27,7 +27,9 @@ def db_session():
     engine = create_engine(database_url)
     with engine.connect() as connection:
         transaction = connection.begin()
-        with Session(bind=connection) as session:
+        with Session(
+            bind=connection, join_transaction_mode="create_savepoint"
+        ) as session:
             yield session
         if transaction.is_active:
             transaction.rollback()
