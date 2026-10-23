@@ -13,6 +13,9 @@ export default function LessonContent({ body }: LessonContentProps) {
         rehypePlugins={rehypePlugins}
         components={{
           ...tableComponents,
+          img: ({ src, alt }) => (
+            <img src={src} alt={alt} className="my-4 h-auto max-w-md" />
+          ),
           h1: ({ children }) => (
             <h1 className="mt-8 text-3xl font-semibold text-slate-900">
               {children}
