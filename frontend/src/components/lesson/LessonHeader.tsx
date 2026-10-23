@@ -1,6 +1,5 @@
 import ReactMarkdown from 'react-markdown'
-import rehypeMathjax from 'rehype-mathjax'
-import remarkMath from 'remark-math'
+import { rehypePlugins, remarkPlugins, tableComponents } from './markdown'
 
 type LessonHeaderProps = {
   title: string
@@ -29,9 +28,10 @@ export default function LessonHeader({
       {objectives ? (
         <div className="lesson-content mt-2 text-base leading-7 text-slate-700">
           <ReactMarkdown
-            remarkPlugins={[remarkMath]}
-            rehypePlugins={[rehypeMathjax]}
+            remarkPlugins={remarkPlugins}
+            rehypePlugins={rehypePlugins}
             components={{
+              ...tableComponents,
               ul: ({ children }) => (
                 <ul className="ml-6 list-disc space-y-1">{children}</ul>
               ),

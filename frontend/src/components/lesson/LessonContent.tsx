@@ -1,6 +1,5 @@
 import ReactMarkdown from 'react-markdown'
-import rehypeMathjax from 'rehype-mathjax'
-import remarkMath from 'remark-math'
+import { rehypePlugins, remarkPlugins, tableComponents } from './markdown'
 
 type LessonContentProps = {
   body: string
@@ -10,9 +9,10 @@ export default function LessonContent({ body }: LessonContentProps) {
   return (
     <article className="lesson-content mt-5 space-y-3 text-base leading-8 text-slate-700">
       <ReactMarkdown
-        remarkPlugins={[remarkMath]}
-        rehypePlugins={[rehypeMathjax]}
+        remarkPlugins={remarkPlugins}
+        rehypePlugins={rehypePlugins}
         components={{
+          ...tableComponents,
           h1: ({ children }) => (
             <h1 className="mt-8 text-3xl font-semibold text-slate-900">
               {children}
