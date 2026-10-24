@@ -22,9 +22,7 @@ export default function LessonHeader({
       <p className="mt-4 text-m text-slate-500">
         Dashboard / Module {moduleId} / Lesson {lessonId}
       </p>
-      <h2 className="mt-4 text-xl font-semibold text-slate-700">
-        Overview
-      </h2>
+      <h2 className="mt-4 text-xl font-semibold text-slate-700">Overview</h2>
       {objectives ? (
         <div className="lesson-content mt-2 text-base leading-7 text-slate-700">
           <ReactMarkdown

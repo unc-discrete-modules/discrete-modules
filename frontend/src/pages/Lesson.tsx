@@ -22,7 +22,11 @@ export default function Lesson() {
   }
 
   if (error || !lesson) {
-    return <main className="p-6 text-lg">{error?.message ?? 'Lesson not found.'}</main>
+    return (
+      <main className="p-6 text-lg">
+        {error?.message ?? 'Lesson not found.'}
+      </main>
+    )
   }
 
   const { objectives, body } = splitLessonSections(lesson.body)

@@ -4,7 +4,8 @@ import type { Lesson } from '../types/types'
 
 export function useLesson(lessonId?: string) {
   const parsedLessonId = Number(lessonId)
-  const validLessonId = Number.isSafeInteger(parsedLessonId) && parsedLessonId > 0
+  const validLessonId =
+    Number.isSafeInteger(parsedLessonId) && parsedLessonId > 0
   const [result, setResult] = useState<{
     lessonId: number
     lesson: Lesson | null

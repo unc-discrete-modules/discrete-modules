@@ -24,7 +24,7 @@ export default function LessonNavigation({
 
   return (
     <nav className="mt-10 flex gap-3" aria-label="Lesson navigation">
-      <Button 
+      <Button
         type="button"
         variant="outline"
         size="lg"
