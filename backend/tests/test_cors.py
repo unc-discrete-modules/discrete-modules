@@ -23,16 +23,14 @@ def client(monkeypatch, authenticated_user):
 
 @pytest.mark.parametrize("origin", [LOCAL_ORIGIN, CLOUD_APPS_ORIGIN])
 def test_configured_origins_are_allowed(client, origin):
-    response = client.get("/api/modules/1/quiz", headers={"Origin": origin})
+    response = client.get("/api/", headers={"Origin": origin})
 
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == origin
 
 
 def test_unlisted_origin_gets_no_cors_headers(client):
-    response = client.get(
-        "/api/modules/1/quiz", headers={"Origin": "https://evil.example"}
-    )
+    response = client.get("/api/", headers={"Origin": "https://evil.example"})
 
     assert "access-control-allow-origin" not in response.headers
 
@@ -57,7 +55,7 @@ def test_no_origins_are_allowed_by_default(monkeypatch):
     monkeypatch.setenv("ALLOWED_ORIGINS", "[]")
 
     with TestClient(create_app()) as client:
-        response = client.get("/api/modules/1/quiz", headers={"Origin": LOCAL_ORIGIN})
+        response = client.get("/api/", headers={"Origin": LOCAL_ORIGIN})
 
     assert "access-control-allow-origin" not in response.headers
 

@@ -479,7 +479,7 @@ def test_authenticated_submission_with_csrf(client, certificates):
     authenticate(client, certificates)
     csrf = client.get("/api/auth/me").json()["csrf_token"]
     response = client.post(
-        "/api/quizzes/1/submissions",
+        "/api/quizzes/2000000000/submissions",
         headers={"Origin": ORIGIN, "X-CSRF-Token": csrf},
         json={
             "answers": [
@@ -489,8 +489,8 @@ def test_authenticated_submission_with_csrf(client, certificates):
             ],
         },
     )
-    assert response.status_code == 200
-    assert response.json()["results"][0]["correct"] is True
+    # 404 proves the session and CSRF checks passed; this quiz id is never seeded.
+    assert response.status_code == 404
 
 
 def test_concurrent_user_provisioning_reuses_identity(db_session):

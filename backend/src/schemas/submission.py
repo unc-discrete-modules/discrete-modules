@@ -14,7 +14,7 @@ class MultipleChoiceAnswer(BaseModel):
 class TextAnswer(BaseModel):
     question_id: int
     type: Literal[QuestionType.FILL_IN_BLANK, QuestionType.FREE_RESPONSE]
-    text: str
+    text: str = Field(max_length=10_000)
 
 
 Answer = Annotated[
