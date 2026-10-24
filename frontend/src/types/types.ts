@@ -15,7 +15,7 @@ export type ModuleSummary = {
 }
 
 export type Module = ModuleSummary & {
-  has_quiz: boolean
+  quiz_id: number | null
   lessons: Lesson[]
 }
 

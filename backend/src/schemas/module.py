@@ -14,5 +14,7 @@ class ModuleSummary(BaseModel):
 
 
 class Module(ModuleSummary):
-    has_quiz: bool = Field(description="Whether the module has a quiz to take.")
+    quiz_id: int | None = Field(
+        description="The module's quiz, or null if it has none."
+    )
     lessons: list[LessonSummary] = Field(description="Lessons in display order.")

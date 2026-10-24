@@ -5,11 +5,17 @@ import LessonNavigation from '@/components/lesson/LessonNavigation'
 import LessonVideo from '@/components/lesson/LessonVideo'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLesson } from '@/hooks/use-lesson'
+import { useModule } from '@/hooks/use-modules'
 import { splitLessonSections } from '../lib/lesson-content'
 
 export default function Lesson() {
   const { moduleId, lessonId } = useParams()
   const { lesson, loading, error } = useLesson(lessonId)
+  const numericModuleId = Number(moduleId)
+  const { module } = useModule(
+    numericModuleId,
+    Number.isSafeInteger(numericModuleId) && numericModuleId > 0,
+  )
 
   if (loading) {
     return <Skeleton className="m-6 h-32" />
@@ -35,6 +41,7 @@ export default function Lesson() {
         moduleId={moduleId}
         previousLessonId={lesson.previous_lesson_id}
         nextLessonId={lesson.next_lesson_id}
+        quizId={module?.quiz_id ?? null}
       />
     </main>
   )

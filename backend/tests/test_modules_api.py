@@ -61,7 +61,7 @@ def test_module_detail_lists_lessons_in_order(client, db_session):
         "title": "Logic",
         "description": "About Logic.",
         "display_order": 1_900_000_003,
-        "has_quiz": True,
+        "quiz_id": module.quiz.id,
         "lessons": [
             {"id": lessons["First"], "title": "First"},
             {"id": lessons["Second"], "title": "Second"},
@@ -74,7 +74,7 @@ def test_module_without_quiz_or_lessons(client, db_session):
 
     body = client.get(f"/api/modules/{module.id}").json()
 
-    assert body["has_quiz"] is False
+    assert body["quiz_id"] is None
     assert body["lessons"] == []
 
 

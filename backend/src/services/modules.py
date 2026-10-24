@@ -28,7 +28,7 @@ def get_module(session: Session, module_id: int) -> Module | None:
     lessons = sorted(row.lessons, key=lambda lesson: lesson.position)
     return Module(
         **_summary(row).model_dump(),
-        has_quiz=row.quiz is not None,
+        quiz_id=row.quiz.id if row.quiz else None,
         lessons=[LessonSummary(id=lesson.id, title=lesson.title) for lesson in lessons],
     )
 

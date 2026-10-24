@@ -5,14 +5,22 @@ type LessonNavigationProps = {
   moduleId?: string
   previousLessonId: number | null
   nextLessonId: number | null
+  quizId: number | null
 }
 
 export default function LessonNavigation({
   moduleId,
   previousLessonId,
   nextLessonId,
+  quizId,
 }: LessonNavigationProps) {
   const navigate = useNavigate()
+  const nextPath =
+    nextLessonId != null
+      ? `/modules/${moduleId}/lessons/${nextLessonId}`
+      : quizId != null
+        ? `/modules/${moduleId}/quiz/${quizId}`
+        : null
 
   return (
     <nav className="mt-10 flex gap-3" aria-label="Lesson navigation">
@@ -32,12 +40,12 @@ export default function LessonNavigation({
         type="button"
         size="lg"
         onClick={() => {
-          if (nextLessonId == null) return
-          navigate(`/modules/${moduleId}/lessons/${nextLessonId}`)
+          if (nextPath == null) return
+          navigate(nextPath)
         }}
-        disabled={nextLessonId == null}
+        disabled={nextPath == null}
       >
-        Next
+        {nextLessonId == null && quizId != null ? 'Take quiz' : 'Next'}
       </Button>
     </nav>
   )
