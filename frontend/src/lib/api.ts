@@ -1,0 +1,24 @@
+import { apiFetch } from '@/api'
+import type { Lesson } from '@/types/types'
+
+async function requestJson<T>(path: string): Promise<T> {
+  const response = await apiFetch(path)
+
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`)
+  }
+
+  return response.json() as Promise<T>
+}
+
+export function getLesson(lessonId: number): Promise<Lesson> {
+  return requestJson<Lesson>(`/lessons/${lessonId}`)
+}
+
+export type ModuleQuiz = {
+  id: number
+}
+
+export function getModuleQuiz(moduleId: number): Promise<ModuleQuiz> {
+  return requestJson<ModuleQuiz>(`/modules/${moduleId}/quiz`)
+}

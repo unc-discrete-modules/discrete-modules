@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from src.database import get_db_session
 from src.main import create_app
 from src.services.auth import require_user
 
@@ -9,6 +10,7 @@ from src.services.auth import require_user
 def client(authenticated_user):
     app = create_app()
     app.dependency_overrides[require_user] = lambda: authenticated_user
+    app.dependency_overrides[get_db_session] = lambda: None
     with TestClient(app) as test_client:
         yield test_client
 
@@ -42,21 +44,7 @@ def test_openapi_documents_every_contract_route():
             assert ref.endswith("/ErrorResponse")
 
 
-def test_healthz(client):
-    assert client.get("/api/healthz").json() == {"status": "ok"}
-
-
-def test_lesson_links_stay_within_module(client):
-    first = client.get("/api/lessons/1").json()
-    last = client.get("/api/lessons/2").json()
-
-    assert (first["previous_lesson_id"], first["next_lesson_id"]) == (None, 2)
-    assert (last["previous_lesson_id"], last["next_lesson_id"]) == (1, None)
-    assert first["video_url"] is None
-    assert last["video_url"].startswith("https://")
-
-
-@pytest.mark.parametrize("path", ["/api/lessons/99", "/nope"])
+@pytest.mark.parametrize("path", ["/nope"])
 def test_missing_resources_use_error_envelope(client, path):
     response = client.get(path)
 

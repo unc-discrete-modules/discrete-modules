@@ -12,14 +12,21 @@ from lxml import etree
 from onelogin.saml2.constants import OneLogin_Saml2_Constants as C
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
 from pydantic import ValidationError
-from sqlalchemy import delete, event
+from sqlalchemy import delete, event, func
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, select
 
 from src.config import Settings
 from src.database import get_db_session
 from src.main import create_app
-from src.models import AuthSession, LoginTransaction, Quiz, SamlReplay, User
+from src.models import (
+    AuthSession,
+    Lesson,
+    LoginTransaction,
+    Module,
+    SamlReplay,
+    User,
+)
 from src.services.auth import (
     SESSION_COOKIE,
     TRANSACTION_COOKIE,
@@ -58,27 +65,35 @@ def saml_settings(certificates):
 
 
 @pytest.fixture
-def auth_engine(tmp_path, monkeypatch):
-    engine = create_engine(
-        f"sqlite:///{tmp_path / 'auth.db'}", connect_args={"check_same_thread": False}
+def auth_lesson(db_session):
+    module = Module(
+        key=f"auth-test-{uuid4().hex}",
+        title="Auth",
+        description="Auth test module",
+        position=2_000_000_000,
     )
-    for model in (User, AuthSession, LoginTransaction, SamlReplay, Quiz):
-        model.__table__.create(engine)
-    monkeypatch.setattr("src.services.auth.get_engine", lambda: engine)
-    yield engine
-    engine.dispose()
+    db_session.add(module)
+    db_session.flush()
+    lesson = Lesson(
+        module_id=module.id,
+        key=f"auth-test-{uuid4().hex}",
+        title="Auth",
+        body="Body",
+        position=0,
+    )
+    db_session.add(lesson)
+    db_session.flush()
+    return lesson
 
 
 @pytest.fixture
-def client(auth_engine, saml_settings):
+def client(db_session, auth_lesson, saml_settings, monkeypatch):
+    # require_user opens its own session; bind it to the test connection so it
+    # sees uncommitted rows and everything rolls back with the test.
+    monkeypatch.setattr("src.services.auth.get_engine", db_session.get_bind)
     app = create_app()
     app.state.settings = saml_settings
-
-    def db():
-        with Session(auth_engine) as session:
-            yield session
-
-    app.dependency_overrides[get_db_session] = db
+    app.dependency_overrides[get_db_session] = lambda: db_session
     with TestClient(app, base_url=ORIGIN, follow_redirects=False) as client:
         yield client
 
@@ -89,6 +104,11 @@ def begin(client, return_to="/"):
     query = parse_qs(urlsplit(response.headers["location"]).query)
     xml = zlib.decompress(base64.b64decode(query["SAMLRequest"][0]), -15)
     return etree.fromstring(xml).get("ID"), query["RelayState"][0], response
+
+
+def count_rows(db, model, *conditions):
+    # The database may already hold rows, so assert on counts rather than emptiness.
+    return db.exec(select(func.count()).select_from(model).where(*conditions)).one()
 
 
 def authenticate(client, certificates, **kwargs):
@@ -136,8 +156,10 @@ def test_signed_request_and_metadata(client, certificates):
         ("response", True),
     ],
 )
-def test_successful_login(client, certificates, auth_engine, signed, encrypted):
-    response, _, _ = authenticate(
+def test_successful_login(
+    client, certificates, db_session, auth_lesson, signed, encrypted
+):
+    response, _, relay = authenticate(
         client,
         certificates,
         signed=signed,
@@ -151,12 +173,11 @@ def test_successful_login(client, certificates, auth_engine, signed, encrypted):
     me = client.get("/api/auth/me")
     assert me.status_code == 200 and me.json()["email"] == "student@example.unc.edu"
     assert me.headers["cache-control"] == "no-store"
-    assert client.get("/api/lessons/1").status_code == 200
-    with Session(auth_engine) as db:
-        stored = db.exec(select(AuthSession)).one()
-        assert stored.token_hash == token_hash(client.cookies[SESSION_COOKIE])
-        assert stored.expires_at <= int(time.time()) + 3600
-        assert db.exec(select(LoginTransaction)).first() is None
+    assert client.get(f"/api/lessons/{auth_lesson.id}").status_code == 200
+    stored = db_session.get(AuthSession, token_hash(client.cookies[SESSION_COOKIE]))
+    assert stored is not None
+    assert stored.expires_at <= int(time.time()) + 3600
+    assert db_session.get(LoginTransaction, relay) is None
 
 
 @pytest.mark.parametrize(
@@ -177,7 +198,7 @@ def test_learning_requires_authentication(client, method, path):
     assert response.json()["error"]["code"] == "unauthorized"
 
 
-def test_user_reuse_rotation_and_logout(client, certificates, auth_engine):
+def test_user_reuse_rotation_and_logout(client, certificates, db_session):
     authenticate(client, certificates)
     old_token = client.cookies[SESSION_COOKIE]
     user_id = client.get("/api/auth/me").json()["id"]
@@ -185,9 +206,8 @@ def test_user_reuse_rotation_and_logout(client, certificates, auth_engine):
     me = client.get("/api/auth/me").json()
     assert me["id"] == user_id
     assert client.cookies[SESSION_COOKIE] != old_token
-    with Session(auth_engine) as db:
-        assert db.get(AuthSession, token_hash(old_token)) is None
-        assert len(db.exec(select(User)).all()) == 1
+    assert db_session.get(AuthSession, token_hash(old_token)) is None
+    assert count_rows(db_session, User, User.email == me["email"]) == 1
     token = client.cookies[SESSION_COOKIE]
     response = client.post(
         "/api/auth/logout", headers={"Origin": ORIGIN, "X-CSRF-Token": me["csrf_token"]}
@@ -211,13 +231,12 @@ def test_csrf_protection(client, certificates, path, origin, csrf):
     assert client.post(path, headers=headers, json={}).status_code == 403
 
 
-def test_expired_session(client, certificates, auth_engine):
+def test_expired_session(client, certificates, db_session):
     authenticate(client, certificates)
-    with Session(auth_engine) as db:
-        session = db.exec(select(AuthSession)).one()
-        session.expires_at = int(time.time()) - 1
-        db.add(session)
-        db.commit()
+    session = db_session.get(AuthSession, token_hash(client.cookies[SESSION_COOKIE]))
+    session.expires_at = int(time.time()) - 1
+    db_session.add(session)
+    db_session.commit()
     assert client.get("/api/auth/me").status_code == 401
 
 
@@ -238,17 +257,16 @@ def test_replay_and_browser_binding(client, certificates):
 
 
 @pytest.mark.parametrize("field", ["request_id", "expires_at", "browser_hash"])
-def test_mismatched_or_expired_transaction(client, certificates, auth_engine, field):
+def test_mismatched_or_expired_transaction(client, certificates, db_session, field):
     request_id, relay, _ = begin(client)
-    with Session(auth_engine) as db:
-        transaction = db.get(LoginTransaction, relay)
-        setattr(
-            transaction,
-            field,
-            int(time.time()) - 1 if field == "expires_at" else "wrong",
-        )
-        db.add(transaction)
-        db.commit()
+    transaction = db_session.get(LoginTransaction, relay)
+    setattr(
+        transaction,
+        field,
+        int(time.time()) - 1 if field == "expires_at" else "wrong",
+    )
+    db_session.add(transaction)
+    db_session.commit()
     value = saml_response(*certificates[:2], request_id)
     assert (
         client.post(
@@ -443,7 +461,7 @@ def test_concurrent_replay_is_rejected_by_postgresql(db_session):
 
 
 def test_rotation_when_lax_cookie_is_absent_from_callback(
-    client, certificates, auth_engine
+    client, certificates, db_session
 ):
     authenticate(client, certificates)
     old_token = client.cookies[SESSION_COOKIE]
@@ -454,15 +472,14 @@ def test_rotation_when_lax_cookie_is_absent_from_callback(
         "/saml/acs", data={"SAMLResponse": value, "RelayState": relay}
     )
     assert response.headers["location"] == "/"
-    with Session(auth_engine) as db:
-        assert db.get(AuthSession, token_hash(old_token)) is None
+    assert db_session.get(AuthSession, token_hash(old_token)) is None
 
 
 def test_authenticated_submission_with_csrf(client, certificates):
     authenticate(client, certificates)
     csrf = client.get("/api/auth/me").json()["csrf_token"]
     response = client.post(
-        "/api/quizzes/1/submissions",
+        "/api/quizzes/2000000000/submissions",
         headers={"Origin": ORIGIN, "X-CSRF-Token": csrf},
         json={
             "answers": [
@@ -472,7 +489,7 @@ def test_authenticated_submission_with_csrf(client, certificates):
             ],
         },
     )
-    # 404 proves the session and CSRF checks passed; no quiz exists here.
+    # 404 proves the session and CSRF checks passed; this quiz id is never seeded.
     assert response.status_code == 404
 
 
@@ -618,7 +635,11 @@ def dev_client(client):
         yield browser
 
 
-def test_dev_login_creates_normal_session_without_saml(dev_client, auth_engine):
+def test_dev_login_creates_normal_session_without_saml(
+    dev_client, db_session, auth_lesson
+):
+    transactions = count_rows(db_session, LoginTransaction)
+    replays = count_rows(db_session, SamlReplay)
     response = dev_client.post(
         "/api/auth/dev-login", headers={"Origin": "http://localhost:5173"}
     )
@@ -629,12 +650,11 @@ def test_dev_login_creates_normal_session_without_saml(dev_client, auth_engine):
     me = dev_client.get("/api/auth/me")
     assert me.status_code == 200
     assert me.json()["email"] == "demo@example.test"
-    assert dev_client.get("/api/lessons/1").status_code == 200
-    with Session(auth_engine) as db:
-        user = db.exec(select(User)).one()
-        assert user.issuer == "urn:discrete-modules:development"
-        assert db.exec(select(LoginTransaction)).first() is None
-        assert db.exec(select(SamlReplay)).first() is None
+    assert dev_client.get(f"/api/lessons/{auth_lesson.id}").status_code == 200
+    user = db_session.get(User, me.json()["id"])
+    assert user.issuer == "urn:discrete-modules:development"
+    assert count_rows(db_session, LoginTransaction) == transactions
+    assert count_rows(db_session, SamlReplay) == replays
     csrf = me.json()["csrf_token"]
     assert dev_client.post("/api/auth/logout").status_code == 403
     assert (
@@ -650,7 +670,7 @@ def test_dev_login_creates_normal_session_without_saml(dev_client, auth_engine):
     assert dev_client.get("/api/auth/me").status_code == 401
 
 
-def test_dev_login_reuses_user_and_rotates_session(dev_client, auth_engine):
+def test_dev_login_reuses_user_and_rotates_session(dev_client, db_session):
     headers = {"Origin": "http://localhost:5173"}
     dev_client.post("/api/auth/dev-login", headers=headers)
     old_token = dev_client.cookies[SESSION_COOKIE]
@@ -658,28 +678,27 @@ def test_dev_login_reuses_user_and_rotates_session(dev_client, auth_engine):
     dev_client.post("/api/auth/dev-login", headers=headers)
     assert dev_client.cookies[SESSION_COOKIE] != old_token
     assert dev_client.get("/api/auth/me").json()["id"] == user_id
-    with Session(auth_engine) as db:
-        assert db.get(AuthSession, token_hash(old_token)) is None
-        assert len(db.exec(select(User)).all()) == 1
-        assert len(db.exec(select(AuthSession)).all()) == 1
+    assert db_session.get(AuthSession, token_hash(old_token)) is None
+    assert db_session.get(AuthSession, token_hash(dev_client.cookies[SESSION_COOKIE]))
+    assert count_rows(db_session, User, User.id == user_id) == 1
 
 
 @pytest.mark.parametrize("origin", [None, "https://evil.example"])
-def test_dev_login_requires_same_origin(dev_client, origin, auth_engine):
+def test_dev_login_requires_same_origin(dev_client, origin, db_session):
     headers = {"Origin": origin} if origin else {}
+    sessions = count_rows(db_session, AuthSession)
     assert dev_client.post("/api/auth/dev-login", headers=headers).status_code == 403
-    with Session(auth_engine) as db:
-        assert db.exec(select(AuthSession)).first() is None
+    assert count_rows(db_session, AuthSession) == sessions
 
 
-def test_demo_login_available_in_production(client):
+def test_demo_login_available_in_production(client, auth_lesson):
     response = client.post("/api/auth/dev-login", headers={"Origin": ORIGIN})
     assert response.status_code == 204
     assert "Secure" in response.headers["set-cookie"]
     me = client.get("/api/auth/me")
     assert me.status_code == 200
     assert me.json()["email"] == "demo@example.test"
-    assert client.get("/api/lessons/1").status_code == 200
+    assert client.get(f"/api/lessons/{auth_lesson.id}").status_code == 200
     assert (
         client.post(
             "/api/auth/logout",

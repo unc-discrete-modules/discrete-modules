@@ -20,7 +20,7 @@ function isModuleSummary(
 function isModule(value: unknown): value is Module {
   return (
     isModuleSummary(value) &&
-    typeof value.has_quiz === 'boolean' &&
+    (value.quiz_id === null || typeof value.quiz_id === 'number') &&
     Array.isArray(value.lessons) &&
     value.lessons.every(
       (lesson: unknown) =>

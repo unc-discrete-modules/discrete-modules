@@ -96,7 +96,7 @@ def test_image_links_point_at_the_served_content_path(content):
 
     body = load_content(content)[0].lessons[0].body
 
-    assert body == "![Venn](/content/01-sets/images/venn.png) and $x$."
+    assert body == "![Venn](/api/content/01-sets/images/venn.png) and $x$."
 
 
 @pytest.mark.parametrize(
@@ -203,3 +203,28 @@ def test_repository_content_is_valid_and_complete():
     assert len(proofs.lessons) == 2
     assert all(lesson.video_url for lesson in proofs.lessons)
     assert {question.type for question in proofs.questions} == set(QuestionType)
+
+
+@pytest.mark.parametrize(
+    ("authored", "stored"),
+    [
+        (
+            "$$\n\\begin{align*}\na &= b\n\\end{align*}$$\n\nAfter.",
+            "$$\n\\begin{align*}\na &= b\n\\end{align*}\n$$\n\nAfter.",
+        ),
+        (
+            "$$\\begin{align*}\na &= b\n\\end{align*}\n$$",
+            "$$\n\\begin{align*}\na &= b\n\\end{align*}\n$$",
+        ),
+        (
+            "$$ x = 1 $$\n\nInline $a$$b$ and $$\n",
+            "$$ x = 1 $$\n\nInline $a$$b$ and $$",
+        ),
+        ("```\n$$\nx$$\n```", "```\n$$\nx$$\n```"),
+        ("$$\nx\n$$\n\nText.", "$$\nx\n$$\n\nText."),
+    ],
+)
+def test_display_math_delimiters_get_their_own_lines(content, authored, stored):
+    write(content, "01-sets/01-intro.md", f"---\ntitle: Sets\n---\n{authored}\n")
+
+    assert load_content(content)[0].lessons[0].body == stored

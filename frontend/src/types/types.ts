@@ -1,10 +1,10 @@
 export type Lesson = {
   id: number
   title: string
-  body?: string
-  video_url?: string
-  previous_lesson_id?: number
-  next_lesson_id?: 0
+  body: string
+  video_url: string | null
+  previous_lesson_id: number | null
+  next_lesson_id: number | null
 }
 
 export type ModuleSummary = {
@@ -15,7 +15,7 @@ export type ModuleSummary = {
 }
 
 export type Module = ModuleSummary & {
-  has_quiz: boolean
+  quiz_id: number | null
   lessons: Lesson[]
 }
 

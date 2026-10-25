@@ -13,6 +13,7 @@ from src.models import QuestionType
 ORDERED_NAME = re.compile(r"^(?P<position>\d+)-(?P<key>[a-z0-9]+(?:-[a-z0-9]+)*)$")
 FRONT_MATTER = re.compile(r"\A---\n(?P<meta>.*?)\n---\n(?P<body>.*)\Z", re.DOTALL)
 LOCAL_IMAGE = re.compile(r"\]\(images/(?P<path>[^)\s]+)\)")
+CODE_FENCE = re.compile(r"^\s*(```|~~~)")
 
 MAX_KEY_LENGTH = 100
 MAX_TITLE_LENGTH = 200
@@ -147,7 +148,7 @@ def _load_lesson(path: Path, folder: Path, problems: list[str]) -> LessonRecord 
     body = match["body"].strip()
     if not body:
         problems.append(f"{where}: lesson body is empty")
-    body = _publish_images(body, folder, where, problems)
+    body = _publish_images(_isolate_display_fences(body), folder, where, problems)
 
     if len(problems) > start or ordered is None:
         return None
@@ -155,6 +156,38 @@ def _load_lesson(path: Path, folder: Path, problems: list[str]) -> LessonRecord 
     return LessonRecord(
         key=key, title=title, body=body, video_url=video_url, position=position
     )
+
+
+def _isolate_display_fences(body: str) -> str:
+    """Put the ``$$`` delimiters of display math on their own lines.
+
+    Markdown math parsers only recognise a display block when both delimiters
+    stand alone, so ``\\end{align*}$$`` leaves the block open and swallows the
+    rest of the lesson. Converted slides and notes routinely write it that way,
+    and the stored body must render regardless of how it was authored.
+    """
+    lines: list[str] = []
+    in_code = in_math = False
+    for line in body.split("\n"):
+        text = line.strip()
+        if CODE_FENCE.match(line):
+            in_code = not in_code
+        elif in_code:
+            pass
+        elif in_math and text.endswith("$$") and text != "$$":
+            indent = line[: len(line) - len(line.lstrip())]
+            lines += [line.rstrip()[:-2].rstrip(), f"{indent}$$"]
+            in_math = False
+            continue
+        elif text == "$$":
+            in_math = not in_math
+        elif not in_math and text.startswith("$$") and text.count("$$") == 1:
+            indent = line[: len(line) - len(line.lstrip())]
+            lines += [f"{indent}$$", indent + text[2:].lstrip()]
+            in_math = True
+            continue
+        lines.append(line)
+    return "\n".join(lines)
 
 
 def _publish_images(body: str, folder: Path, where: str, problems: list[str]) -> str:
@@ -167,7 +200,7 @@ def _publish_images(body: str, folder: Path, where: str, problems: list[str]) ->
         if not (folder / "images" / match["path"]).is_file():
             problems.append(f"{where}: image not found: images/{match['path']}")
     return LOCAL_IMAGE.sub(
-        lambda match: f"](/content/{folder.name}/images/{match['path']})", body
+        lambda match: f"](/api/content/{folder.name}/images/{match['path']})", body
     )
 
 

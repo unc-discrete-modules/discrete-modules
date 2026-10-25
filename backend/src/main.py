@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from src.config import Settings
 from src.errors import register_error_handlers
@@ -34,6 +35,12 @@ def create_app() -> FastAPI:
     )
     app.include_router(root.router)
     app.include_router(auth.router)
+    # Lesson images are stored as /api/content/... URLs; /api is the prefix the
+    # frontend proxy already forwards to this service.
+    if settings.content_dir.is_dir():
+        app.mount(
+            "/api/content", StaticFiles(directory=settings.content_dir), name="content"
+        )
     return app
 
 
