@@ -1,20 +1,5 @@
-import pytest
-from fastapi.testclient import TestClient
-
-from src.database import get_db_session
-from src.main import create_app
 from src.models import QuestionType
-from src.services.auth import require_user
 from tests.helpers import UNUSED_ID, add_module, add_question
-
-
-@pytest.fixture
-def client(db_session, authenticated_user):
-    app = create_app()
-    app.dependency_overrides[get_db_session] = lambda: db_session
-    app.dependency_overrides[require_user] = lambda: authenticated_user
-    with TestClient(app) as test_client:
-        yield test_client
 
 
 def test_modules_are_listed_in_display_order(client, db_session):
