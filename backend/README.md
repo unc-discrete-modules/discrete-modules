@@ -97,6 +97,29 @@ uv run pytest
 Dependencies are pinned in `pyproject.toml`, with transitive versions in `uv.lock`.
 `uv sync --locked` installs the development dependencies, including pytest.
 
+### Database tests
+
+Most API, model, and seed tests run against PostgreSQL so constraints behave as
+in production. Each test runs in a transaction that is rolled back, so it leaves
+no rows behind. Without `DATABASE_URL` those tests are skipped locally, and they
+fail when the `CI` environment variable is set so a missing database cannot make
+CI pass silently.
+
+To run them, start the Compose database from the repository root and migrate it
+from `backend/`. Use the user, password, database, and port from the repository's
+`.env` (`POSTGRES_PORT` defaults to 5432; set another value if that port is
+taken):
+
+```sh
+docker compose up -d postgres
+export DATABASE_URL='postgresql+psycopg://<user>:<password>@localhost:<port>/<database>'
+uv run alembic upgrade head
+uv run pytest
+```
+
+Use a database you can afford to lose: the tests roll back their own changes, but
+a migration or a bug can still alter it.
+
 ## Layout
 
 - `src/main.py`: app construction and ASGI entry point
