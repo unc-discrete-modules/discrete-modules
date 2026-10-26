@@ -12,3 +12,4 @@ data:
   SAML_IDP_METADATA_PATH: /app/saml/unc-idp.xml
   SAML_SP_CERTIFICATE_PATH: /var/run/saml/sp.crt
   SAML_SP_PRIVATE_KEY_PATH: /var/run/saml/sp.key
+  SAML_EMAIL_SOURCE: nameid

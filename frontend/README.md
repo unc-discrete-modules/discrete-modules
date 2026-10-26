@@ -21,9 +21,10 @@ The Vite development server normally uses `http://localhost:5173`. Use `npm run 
 
 The client checks `/api/auth/me` before loading learning pages or course data.
 Anonymous visitors go to `/login`; expired sessions return there with the current
-page saved. API requests use same-origin `/api` through NGINX in production and
-Vite's proxy locally. Set `VITE_BACKEND_TARGET` in `frontend/.env.local` when the
-local backend is not at `http://localhost:8000`. See the
+page saved. API requests, including lesson images at `/api/content/`, use the
+same-origin `/api` proxy through NGINX in production and Vite locally. Set
+`VITE_BACKEND_TARGET` in `frontend/.env.local` when the local backend is not at
+`http://localhost:8000`. See the
 [SAML guide](../backend/saml/README.md) for authentication setup and testing.
 
 The login page temporarily has a **Sign in as demo user** button in all
