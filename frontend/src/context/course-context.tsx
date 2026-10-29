@@ -1,35 +1,48 @@
-// src/context/course-context.tsx
 import { useEffect, useState } from 'react'
-import { fetchModuleSummaries } from '@/api/modules'
+import { listModules } from '@/api/client'
 import type { ModuleSummary } from '@/types/types'
 import { CourseContext } from './course-context-value'
 
 export function CourseProvider({ children }: { children: React.ReactNode }) {
-  const [modules, setModules] = useState<ModuleSummary[] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+  const [attempt, setAttempt] = useState(0)
+  const [result, setResult] = useState<{
+    attempt: number
+    modules: ModuleSummary[] | null
+    error: Error | null
+  } | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
-    fetchModuleSummaries(controller.signal)
-      .then(setModules)
-      .catch((reason: unknown) => {
+    listModules(controller.signal)
+      .then((modules) => {
+        if (!controller.signal.aborted)
+          setResult({ attempt, modules, error: null })
+      })
+      .catch((error: unknown) => {
         if (!controller.signal.aborted) {
-          setError(
-            reason instanceof Error
-              ? reason
-              : new Error('Failed to load modules'),
-          )
+          setResult({
+            attempt,
+            modules: null,
+            error:
+              error instanceof Error
+                ? error
+                : new Error('Unable to load modules.'),
+          })
         }
       })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
-      })
     return () => controller.abort()
-  }, [])
+  }, [attempt])
 
+  const current = result?.attempt === attempt ? result : null
   return (
-    <CourseContext.Provider value={{ modules, loading, error }}>
+    <CourseContext.Provider
+      value={{
+        modules: current?.modules ?? null,
+        loading: current === null,
+        error: current?.error ?? null,
+        retry: () => setAttempt((value) => value + 1),
+      }}
+    >
       {children}
     </CourseContext.Provider>
   )

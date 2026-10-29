@@ -3,29 +3,35 @@ import LessonContent from '@/components/lesson/LessonContent'
 import LessonHeader from '@/components/lesson/LessonHeader'
 import LessonNavigation from '@/components/lesson/LessonNavigation'
 import LessonVideo from '@/components/lesson/LessonVideo'
-import { Skeleton } from '@/components/ui/skeleton'
+import { ErrorState, LoadingState } from '@/components/RequestState'
 import { useLesson } from '@/hooks/use-lesson'
 import { useModule } from '@/hooks/use-modules'
 import { splitLessonSections } from '../lib/lesson-content'
 
 export default function Lesson() {
   const { moduleId, lessonId } = useParams()
-  const { lesson, loading, error } = useLesson(lessonId)
+  const { lesson, loading, error, retry } = useLesson(lessonId)
   const numericModuleId = Number(moduleId)
-  const { module } = useModule(
+  const {
+    module,
+    loading: moduleLoading,
+    error: moduleError,
+    retry: retryModule,
+  } = useModule(
     numericModuleId,
     Number.isSafeInteger(numericModuleId) && numericModuleId > 0,
   )
 
   if (loading) {
-    return <Skeleton className="m-6 h-32" />
+    return <LoadingState message="Loading lesson..." />
   }
 
   if (error || !lesson) {
     return (
-      <main className="p-6 text-lg">
-        {error?.message ?? 'Lesson not found.'}
-      </main>
+      <ErrorState
+        error={error ?? new Error('Lesson not found.')}
+        retry={retry}
+      />
     )
   }
 
@@ -39,12 +45,14 @@ export default function Lesson() {
         lessonId={lessonId}
         objectives={objectives}
       />
-      <LessonVideo videoUrl={lesson.video_url} title={lesson.title} />
+      <LessonVideo videoUrl={lesson.video_url ?? null} title={lesson.title} />
       <LessonContent body={body} />
+      {moduleLoading && <LoadingState message="Loading lesson navigation..." />}
+      {moduleError && <ErrorState error={moduleError} retry={retryModule} />}
       <LessonNavigation
         moduleId={moduleId}
-        previousLessonId={lesson.previous_lesson_id}
-        nextLessonId={lesson.next_lesson_id}
+        previousLessonId={lesson.previous_lesson_id ?? null}
+        nextLessonId={lesson.next_lesson_id ?? null}
         quizId={module?.quiz_id ?? null}
       />
     </main>

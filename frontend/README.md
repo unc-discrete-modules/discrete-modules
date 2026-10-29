@@ -43,3 +43,24 @@ All pages can be found in `frontend/src/pages`, while components are stored in `
 - Module Overviews: `/modules/:moduleId`
 - Quizzes:`/modules/:moduleId/quiz/:quizId`
 - Lessons: `/modules/:moduleId/lessons/:lessonId`
+
+## API client
+
+Use the functions in `src/api/client.ts` for module, lesson, quiz, and submission
+requests. Read functions accept an optional `AbortSignal`. For submissions, pass
+`submitQuiz(quizId, submission, { csrfToken: user.csrf_token, signal })` using
+the signed-in user from `useAuth()`; `signal` is optional.
+
+Types are generated from FastAPI's OpenAPI schema. You *must* regenerate the API client after 
+making changes to the backend API.
+
+```sh
+npm run api:generate
+npm run api:check
+npm test
+```
+
+Generation exports the schema using the locked backend environment into a
+temporary file; no running server, database, or SSO credentials are needed.
+Commit the generated types after backend contract changes. CI checks that they
+are current. Do not edit `src/api/schema.d.ts` by hand.

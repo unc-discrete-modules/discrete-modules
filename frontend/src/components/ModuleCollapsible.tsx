@@ -1,5 +1,6 @@
 // Component for collapsible module in the sidebar.
 
+import { ErrorState, LoadingState } from './RequestState'
 import { Link, useParams } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
@@ -56,18 +57,13 @@ export default function ModuleCollapsible({
         <CollapsibleContent id={`module-${module.id}-lessons`}>
           <SidebarMenuSub className="mx-0 w-full translate-x-0 border-l-0 px-0 py-0">
             {lessonsLoading && (
-              <li className="py-1 pl-8 pr-2 text-sm">Loading lessons...</li>
+              <li>
+                <LoadingState message="Loading lessons..." />
+              </li>
             )}
             {lessonsError && (
-              <li role="alert" className="px-2 py-1 text-sm">
-                {lessonsError.message}
-                <button
-                  type="button"
-                  className="ml-2 underline"
-                  onClick={retry}
-                >
-                  Retry
-                </button>
+              <li>
+                <ErrorState error={lessonsError} retry={retry} />
               </li>
             )}
             {details?.lessons.map((lesson) => (
