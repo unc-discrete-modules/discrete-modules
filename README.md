@@ -43,6 +43,16 @@ docker compose exec backend uv run alembic upgrade head
 `docker compose up` runs the migrations and loads `content/` through the `seed`
 service. After editing content, reload it with `docker compose run --rm seed`.
 
+If you previously ran the local stack with PostgreSQL 17, reset the local
+database volume before starting PostgreSQL 16:
+
+```sh
+docker compose down --volumes
+docker compose up -d --build
+docker compose exec backend uv run alembic upgrade head
+docker compose exec backend uv run python -m src.seed
+```
+
 ### Tests and checks
 
 ```sh
