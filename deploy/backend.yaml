@@ -22,6 +22,7 @@ spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
+      restartPolicy: Always
       initContainers:
         - name: migrate
           image: ghcr.io/1drturtle/discrete-modules-backend:latest

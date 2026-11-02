@@ -24,6 +24,7 @@ services:
       dockerfile: backend/Dockerfile
       target: development
     command: sh -c "uv run alembic upgrade head && uv run python -m src.seed"
+    restart: "no"
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-discrete_modules}:${POSTGRES_PASSWORD:-discrete_modules}@postgres:5432/${POSTGRES_DB:-discrete_modules}
     volumes:
