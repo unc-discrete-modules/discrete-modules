@@ -7,12 +7,13 @@ from posixpath import normpath
 from typing import Annotated
 from urllib.parse import unquote, urlsplit
 
-from fastapi import HTTPException, Request, Security
+from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security import APIKeyCookie
 from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlmodel import Session, select
 
+from src.config import Settings
 from src.database import get_engine
 from src.models import AuthSession, LoginTransaction, SamlReplay, User
 from src.services.saml import ISSUER, SamlIdentity
@@ -56,6 +57,7 @@ def safe_return_to(value: str) -> str:
 class AuthenticatedUser:
     id: int
     email: str
+    role: str
     csrf_token: str
     token_hash: str
 
@@ -83,11 +85,31 @@ def require_user(
                     )
                 ):
                     raise HTTPException(403, "Invalid CSRF token or origin")
+            previous_role = user.role
+            reconcile_role(user, request.app.state.settings)
+            if user.role != previous_role:
+                db.commit()
             return AuthenticatedUser(
-                user.id, user.email, session.csrf_token, session.token_hash
+                user.id, user.email, user.role, session.csrf_token, session.token_hash
             )
     except (SQLAlchemyError, RuntimeError) as exc:
         raise HTTPException(503, "Authentication service unavailable") from exc
+
+
+def require_admin(
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
+) -> AuthenticatedUser:
+    if user.role != "admin":
+        raise HTTPException(403, "Admin access required")
+    return user
+
+
+def require_progress_access(
+    user_id: int, user: Annotated[AuthenticatedUser, Depends(require_user)]
+) -> AuthenticatedUser:
+    if user.id != user_id and user.role != "admin":
+        raise HTTPException(403, "Progress access denied")
+    return user
 
 
 def cleanup_expired(db: Session, now: int) -> None:
@@ -118,6 +140,14 @@ def get_or_create_user(db: Session, issuer: str, email: str) -> User:
     return user
 
 
+def reconcile_role(user: User, settings: Settings) -> None:
+    user.role = (
+        "admin"
+        if user.issuer == ISSUER and user.email in settings.admin_emails
+        else "student"
+    )
+
+
 def create_session(
     db: Session, user: User, expires_at: int, previous_hashes: set[str]
 ) -> str:
@@ -140,6 +170,7 @@ def establish_session(
     transaction: LoginTransaction,
     identity: SamlIdentity,
     old_token: str | None,
+    settings: Settings,
 ) -> tuple[str, int]:
     now = int(time.time())
     expires_at = min(
@@ -157,6 +188,7 @@ def establish_session(
         )
     db.flush()
     user = get_or_create_user(db, ISSUER, identity.email)
+    reconcile_role(user, settings)
     previous_hashes = set()
     if transaction.previous_session_hash:
         previous_hashes.add(transaction.previous_session_hash)

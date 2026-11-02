@@ -28,6 +28,7 @@ Apply the database migrations before using authentication. Configure:
 | `SAML_SP_PRIVATE_KEY_PATH` | `/var/run/saml/sp.key` |
 | `SAML_EMAIL_SOURCE` | `nameid` or `attribute`, after confirming release |
 | `SAML_EMAIL_ATTRIBUTE` | Exact SAML Attribute Name, required for `attribute` |
+| `ADMIN_EMAILS` | JSON array of full UNC email addresses; defaults to `[]` |
 
 The email source deliberately has no default. Requested email release does not
 establish its location in an assertion. Use `nameid` only if UNC returns a NameID
@@ -40,6 +41,24 @@ Users are keyed by UNC issuer and the email provided by UNC, with surrounding
 whitespace removed and case preserved. A changed email creates a separate
 account. Any account consolidation must be deliberate, especially when saved
 progress is added later.
+
+## Authorization
+
+`ADMIN_EMAILS` contains full email addresses, not Onyens. Surrounding whitespace
+is trimmed, but matching is exact and case-sensitive against the validated UNC
+email. Invalid entries prevent startup. An empty list grants no administrator
+access, and the demo issuer is always a student even if its email is listed.
+Existing users default to `student` on migration. Roles are reconciled at login
+and on the next authenticated request, so allowlist additions and removals apply
+to existing sessions after the updated settings are deployed.
+
+`require_admin` depends on `require_user` and returns 403 for students.
+`require_progress_access` depends on `require_user` and permits administrators
+or the user whose ID matches the route's `{user_id}`; it returns 403 otherwise.
+Future admin and progress routes must explicitly attach the appropriate guard
+(including the routes planned in #61, #63, and #72). Both guards retain session,
+origin, and CSRF checks from `require_user`. Role is internal and is not returned
+by `/api/auth/me`.
 
 Mount the SP key and certificate through an OpenShift Secret; never put them
 in an image or source control. The public SP certificate is published through
