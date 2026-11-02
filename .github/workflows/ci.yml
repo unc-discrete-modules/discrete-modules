@@ -59,6 +59,10 @@ jobs:
       - run: uv sync --locked
       - run: uv run alembic upgrade head
       - run: uv run alembic check
+      - run: uv run python -m src.seed --check
+      # Twice: the second run proves a redeploy updates rows in place.
+      - run: uv run python -m src.seed
+      - run: uv run python -m src.seed
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest

@@ -40,8 +40,8 @@ Run migrations from the backend service:
 docker compose exec backend uv run alembic upgrade head
 ```
 
-The project includes Alembic migrations. Database seed data will be added with
-the database-content work.
+`docker compose up` runs the migrations and loads `content/` through the `seed`
+service. After editing content, reload it with `docker compose run --rm seed`.
 
 ### Tests and checks
 

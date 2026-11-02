@@ -96,10 +96,11 @@ IMAGE_TAG=<git-commit-sha>
 oc set image deployment/frontend frontend="ghcr.io/1drturtle/discrete-modules-frontend:${IMAGE_TAG}"
 oc set image deployment/backend \
   backend="ghcr.io/1drturtle/discrete-modules-backend:${IMAGE_TAG}" \
-  migrate="ghcr.io/1drturtle/discrete-modules-backend:${IMAGE_TAG}"
+  migrate="ghcr.io/1drturtle/discrete-modules-backend:${IMAGE_TAG}" \
+  seed="ghcr.io/1drturtle/discrete-modules-backend:${IMAGE_TAG}"
 ```
 
-Wait for the database, migration init container, API, and frontend to become
+Wait for the database, migration and seed init containers, API, and frontend to become
 ready:
 
 ```sh
@@ -112,6 +113,36 @@ oc get pods,services,pvc,route
 The public site is served at
 <https://discrete-modules.apps.cloudapps.unc.edu/>. NGINX forwards `/api` to
 FastAPI and forwards `/saml/acs` to the SAML callback.
+
+## Publish content
+
+Lessons and quizzes ship inside the backend image, and the `seed` init container
+loads them after `migrate` on every backend pod start:
+
+1. Edit `content/` (format in [content/README.md](../content/README.md)) and open
+   a pull request. CI runs `src.seed --check` and fails on invalid content.
+2. Merge to `main`. CI publishes a new backend image.
+3. Roll the backend so the new image is pulled and seeded:
+
+   ```sh
+   oc rollout restart deployment/backend
+   oc rollout status deployment/backend --timeout=5m
+   ```
+
+The seed updates rows in place and keeps their IDs. It runs in one transaction,
+so a failed run changes nothing; the new pod stays in `Init:Error` or
+`Init:CrashLoopBackOff` and the previous pod keeps serving. Find the cause with:
+
+```sh
+oc logs deployment/backend -c seed
+```
+
+Fix the content and publish again, or run `oc rollout undo deployment/backend`.
+
+Content removed from `content/` is deleted from the database, and database
+foreign keys cascade. Once progress tracking stores per-question records, deleting
+or renaming a question key would delete the matching progress, so revisit the
+seed's pruning when that schema is designed.
 
 ## Smoke tests
 

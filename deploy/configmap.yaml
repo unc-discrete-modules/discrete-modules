@@ -7,6 +7,7 @@ metadata:
 data:
   ALLOWED_ORIGINS: '["https://discrete-modules.apps.cloudapps.unc.edu"]'
   ENVIRONMENT: production
+  CONTENT_DIR: /content
   PUBLIC_ORIGIN: https://discrete-modules.apps.cloudapps.unc.edu
   AUTH_COOKIE_SECURE: "true"
   SAML_IDP_METADATA_PATH: /app/saml/unc-idp.xml

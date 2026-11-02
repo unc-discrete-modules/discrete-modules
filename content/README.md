@@ -2,7 +2,7 @@
 
 Version-controlled Markdown lessons and quiz definitions for the discrete
 mathematics modules. The seed script (`backend/src/seed.py`) loads this
-directory into PostgreSQL; nothing here is read at request time.
+directory into PostgreSQL. Only the lesson images are read at request time.
 
 ## Layout
 
@@ -106,12 +106,23 @@ uv run python -m src.seed           # load into DATABASE_URL
 - Re-running is safe. Rows are matched by key and updated in place, so IDs do
   not change and nothing is duplicated.
 - Content removed from this directory is removed from the database. This
-  directory is the source of truth; do not edit lessons in the database.
+  directory is the source of truth; do not edit lessons in the database. Keys
+  are permanent once students have progress: deleting or renaming one will
+  also delete anything that references the old row.
 - The whole run is one transaction. If validation or the database fails,
   nothing is changed.
 - Validation reports every problem at once (missing files, unknown fields,
   missing images, a multiple-choice question without exactly one correct
   option, duplicate keys or positions).
+
+## Publishing
+
+Edit this directory and open a pull request; CI runs `--check`. After the merge,
+the backend image is rebuilt and the deployment's `seed` init container loads the
+content when the backend is rolled out (see
+[`deploy/README.md`](../deploy/README.md#publish-content)). A failed seed keeps the
+previous version serving. Locally, `docker compose up` migrates and seeds
+automatically; run `docker compose run --rm seed` after editing content.
 
 Set `CONTENT_DIR` or pass `--content-dir` to load a different directory.
 
