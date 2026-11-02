@@ -143,8 +143,10 @@ def authenticate(client, certificates, **kwargs):
         (["student@example.unc.edu"], "student@example.unc.edu", "admin"),
     ],
 )
-def test_signed_login_roles(client, certificates, allowlist, email, expected):
-    client.app.state.settings.admin_emails = allowlist
+def test_signed_login_roles(
+    client, certificates, monkeypatch, allowlist, email, expected
+):
+    monkeypatch.setattr(client.app.state.settings, "admin_emails", allowlist)
     response, _, _ = authenticate(client, certificates, email=email)
     assert response.headers["location"] == "/modules/1"
     me = client.get("/api/auth/me").json()
@@ -152,7 +154,9 @@ def test_signed_login_roles(client, certificates, allowlist, email, expected):
     assert client.get(f"/test/progress/{me['id']}").json()["role"] == expected
 
 
-def test_guards_refresh_roles_and_enforce_csrf(client, certificates, db_session):
+def test_guards_refresh_roles_and_enforce_csrf(
+    client, certificates, db_session, monkeypatch
+):
     assert client.get("/test/admin").status_code == 401
     authenticate(client, certificates)
     me = client.get("/api/auth/me").json()
@@ -161,21 +165,23 @@ def test_guards_refresh_roles_and_enforce_csrf(client, certificates, db_session)
     assert client.get("/test/admin").status_code == 403
     assert client.get(own).json()["role"] == "student"
     assert client.get(other).status_code == 403
-    client.app.state.settings.admin_emails = [me["email"]]
+    monkeypatch.setattr(client.app.state.settings, "admin_emails", [me["email"]])
     assert client.get("/test/admin").json()["role"] == "admin"
     assert client.get(own).status_code == 200
     assert client.get(other).status_code == 200
     assert client.post(other).status_code == 403
     headers = {"Origin": ORIGIN, "X-CSRF-Token": me["csrf_token"]}
     assert client.post(other, headers=headers).status_code == 200
-    client.app.state.settings.admin_emails = []
+    monkeypatch.setattr(client.app.state.settings, "admin_emails", [])
     assert client.get("/test/admin").status_code == 403
     db_session.expire_all()
     assert db_session.get(User, me["id"]).role == "student"
 
 
-def test_demo_issuer_cannot_be_admin(client, db_session):
-    client.app.state.settings.admin_emails = ["demo@example.test"]
+def test_demo_issuer_cannot_be_admin(client, db_session, monkeypatch):
+    monkeypatch.setattr(
+        client.app.state.settings, "admin_emails", ["demo@example.test"]
+    )
     assert (
         client.post("/api/auth/dev-login", headers={"Origin": ORIGIN}).status_code
         == 204
@@ -199,12 +205,14 @@ def test_admin_email_environment_trims_without_case_folding(monkeypatch):
     assert Settings(_env_file=None).admin_emails == ["Admin@unc.edu"]
 
 
-def test_login_reconciles_existing_user_role(client, certificates, db_session):
+def test_login_reconciles_existing_user_role(
+    client, certificates, db_session, monkeypatch
+):
     email = f"{uuid4().hex}@example.unc.edu"
     user = User(issuer=ISSUER, email=email, created_at=int(time.time()))
     db_session.add(user)
     db_session.flush()
-    client.app.state.settings.admin_emails = [email]
+    monkeypatch.setattr(client.app.state.settings, "admin_emails", [email])
     response, _, _ = authenticate(client, certificates, email=email)
     assert response.headers["location"] == "/modules/1"
     db_session.refresh(user)
@@ -620,7 +628,9 @@ def test_concurrent_user_provisioning_reuses_identity(db_session):
             identity = SamlIdentity(
                 email, f"r-{identifier}-{i}", f"a-{identifier}-{i}", now + 300, None
             )
-            return establish_session(db, transaction, identity, None, Settings())[0]
+            return establish_session(
+                db, transaction, identity, None, Settings(_env_file=None)
+            )[0]
 
     event.listen(engine, "after_cursor_execute", synchronize_select)
     try:

@@ -107,6 +107,11 @@ def require_admin(
 def require_progress_access(
     user_id: int, user: Annotated[AuthenticatedUser, Depends(require_user)]
 ) -> AuthenticatedUser:
+    """Guard routes whose {user_id} path parameter identifies the progress owner.
+
+    Without that path parameter FastAPI accepts user_id from the query string,
+    which must not be used to authorize access to a different user's progress.
+    """
     if user.id != user_id and user.role != "admin":
         raise HTTPException(403, "Progress access denied")
     return user
