@@ -49,10 +49,6 @@ database volume before starting PostgreSQL 16:
 ```sh
 docker compose down --volumes
 docker compose up -d --build
-docker compose exec backend uv run alembic upgrade head
-docker compose exec backend uv run python -m src.seed
-```
-
 ### Tests and checks
 
 ```sh
