@@ -87,3 +87,18 @@ def test_admin_routes_document_errors_and_summaries():
                     "schema"
                 ]["$ref"]
                 assert ref.endswith("/ErrorResponse"), (path, method, status)
+
+
+def test_protected_writes_document_csrf_header():
+    paths = create_app().openapi()["paths"]
+    for path, method in (
+        ("/api/admin/modules", "post"),
+        ("/api/admin/quizzes/{quiz_id}", "put"),
+        ("/api/admin/lessons/{lesson_id}", "delete"),
+        ("/api/quizzes/{quiz_id}/submissions", "post"),
+        ("/api/auth/logout", "post"),
+    ):
+        parameters = paths[path][method]["parameters"]
+        csrf = next(p for p in parameters if p["name"] == "X-CSRF-Token")
+        assert csrf["in"] == "header"
+        assert "/api/auth/me" in csrf["description"]
