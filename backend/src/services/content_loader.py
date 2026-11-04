@@ -9,16 +9,20 @@ from urllib.parse import urlparse
 import yaml
 
 from src.models import QuestionType
+from src.services.content_validation import (
+    MAX_OPTIONS,
+    has_one_correct,
+    normalize_markdown,
+    valid_option_count,
+)
 
 ORDERED_NAME = re.compile(r"^(?P<position>\d+)-(?P<key>[a-z0-9]+(?:-[a-z0-9]+)*)$")
 FRONT_MATTER = re.compile(r"\A---\n(?P<meta>.*?)\n---\n(?P<body>.*)\Z", re.DOTALL)
 LOCAL_IMAGE = re.compile(r"\]\(images/(?P<path>[^)\s]+)\)")
-CODE_FENCE = re.compile(r"^\s*(```|~~~)")
 
 MAX_KEY_LENGTH = 100
 MAX_TITLE_LENGTH = 200
 MAX_URL_LENGTH = 2048
-MAX_OPTIONS = 26  # option keys are the letters a-z
 
 MODULE_FIELDS = {"title", "description"}
 LESSON_FIELDS = {"title", "video_url"}
@@ -148,7 +152,7 @@ def _load_lesson(path: Path, folder: Path, problems: list[str]) -> LessonRecord 
     body = match["body"].strip()
     if not body:
         problems.append(f"{where}: lesson body is empty")
-    body = _publish_images(_isolate_display_fences(body), folder, where, problems)
+    body = _publish_images(normalize_markdown(body), folder, where, problems)
 
     if len(problems) > start or ordered is None:
         return None
@@ -156,38 +160,6 @@ def _load_lesson(path: Path, folder: Path, problems: list[str]) -> LessonRecord 
     return LessonRecord(
         key=key, title=title, body=body, video_url=video_url, position=position
     )
-
-
-def _isolate_display_fences(body: str) -> str:
-    """Put the ``$$`` delimiters of display math on their own lines.
-
-    Markdown math parsers only recognise a display block when both delimiters
-    stand alone, so ``\\end{align*}$$`` leaves the block open and swallows the
-    rest of the lesson. Converted slides and notes routinely write it that way,
-    and the stored body must render regardless of how it was authored.
-    """
-    lines: list[str] = []
-    in_code = in_math = False
-    for line in body.split("\n"):
-        text = line.strip()
-        if CODE_FENCE.match(line):
-            in_code = not in_code
-        elif in_code:
-            pass
-        elif in_math and text.endswith("$$") and text != "$$":
-            indent = line[: len(line) - len(line.lstrip())]
-            lines += [line.rstrip()[:-2].rstrip(), f"{indent}$$"]
-            in_math = False
-            continue
-        elif text == "$$":
-            in_math = not in_math
-        elif not in_math and text.startswith("$$") and text.count("$$") == 1:
-            indent = line[: len(line) - len(line.lstrip())]
-            lines += [f"{indent}$$", indent + text[2:].lstrip()]
-            in_math = True
-            continue
-        lines.append(line)
-    return "\n".join(lines)
 
 
 def _publish_images(body: str, folder: Path, where: str, problems: list[str]) -> str:
@@ -282,7 +254,7 @@ def _load_question(
 def _load_options(
     raw: Any, label: str, problems: list[str]
 ) -> tuple[OptionRecord, ...]:
-    if not isinstance(raw, list) or not 2 <= len(raw) <= MAX_OPTIONS:
+    if not isinstance(raw, list) or not valid_option_count(len(raw)):
         problems.append(f"{label}: 'options' must list 2 to {MAX_OPTIONS} choices")
         return ()
 
@@ -307,7 +279,9 @@ def _load_options(
                     position=index,
                 )
             )
-    if len(problems) == start and sum(option.is_correct for option in options) != 1:
+    if len(problems) == start and not has_one_correct(
+        option.is_correct for option in options
+    ):
         problems.append(f"{label}: exactly one option must have 'correct: true'")
     return tuple(options)
 

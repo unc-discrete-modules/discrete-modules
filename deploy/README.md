@@ -123,8 +123,9 @@ FastAPI and forwards `/saml/acs` to the SAML callback.
 
 ## Publish content
 
-Lessons and quizzes ship inside the backend image, and the `seed` init container
-loads them after `migrate` on every backend pod start:
+New module content ships inside the backend image, and the `seed` init container
+loads missing modules after `migrate` on every backend pod start. Manage existing
+modules, lessons, and quizzes through the admin API:
 
 1. Edit `content/` (format in [content/README.md](../content/README.md)) and open
    a pull request. CI runs `src.seed --check` and fails on invalid content.
@@ -136,7 +137,7 @@ loads them after `migrate` on every backend pod start:
    oc rollout status deployment/backend --timeout=5m
    ```
 
-The seed updates rows in place and keeps their IDs. It runs in one transaction,
+The seed skips existing module trees and appends new modules. It runs in one transaction,
 so a failed run changes nothing; the new pod stays in `Init:Error` or
 `Init:CrashLoopBackOff` and the previous pod keeps serving. Find the cause with:
 
@@ -146,10 +147,10 @@ oc logs deployment/backend -c seed
 
 Fix the content and publish again, or run `oc rollout undo deployment/backend`.
 
-Content removed from `content/` is deleted from the database, and database
-foreign keys cascade. Once progress tracking stores per-question records, deleting
-or renaming a question key would delete the matching progress, so revisit the
-seed's pruning when that schema is designed.
+Removing content from `content/` does not delete database content. A module
+that is deleted from the database while still present in `content/` will be
+inserted again on the next seed run. Deletions through the API cascade through
+the current content hierarchy; a progress deletion policy remains future work.
 
 ## Smoke tests
 

@@ -93,61 +93,32 @@ def test_rerunning_seed_does_not_duplicate_or_change_primary_keys(db_session):
     assert ids(db_session) == first
 
 
-def test_seed_updates_reorders_and_removes_in_place(db_session):
+def test_seed_preserves_existing_trees_and_appends_new_modules(db_session):
+    sync_content(db_session, [module("sets", 1, [lesson("a", 1)], [choice("q", "a")])])
+    sets = db_session.exec(select(Module).where(Module.key == "sets")).one()
+    sets.title = "Edited"
+    original = ids(db_session)
     sync_content(
         db_session,
         [
-            module(
-                "sets",
-                1,
-                [lesson("a", 1), lesson("b", 2)],
-                [choice("q1", "a", 0), essay("q2", 1)],
-            ),
-            module("logic", 2, [lesson("intro", 1)]),
+            module("sets", 1, [lesson("new", 1)], [essay("new", 0)]),
+            module("logic", 1, [lesson("intro", 1)]),
         ],
     )
-    before = ids(db_session)
-
-    sync_content(
-        db_session,
-        [
-            module(
-                "sets",
-                2,
-                [lesson("b", 1, "Edited"), lesson("a", 2)],
-                [essay("q2", 0), choice("q1", "c", 1)],
-            ),
-        ],
-    )
-
-    sets = db_session.exec(select(Module).where(Module.key == "sets")).one()
-    assert sets.position == 2
-    lessons = sorted(sets.lessons, key=lambda item: item.position)
-    assert [(item.key, item.body) for item in lessons] == [
-        ("b", "Edited"),
-        ("a", "Body"),
-    ]
-    questions = sorted(sets.quiz.questions, key=lambda item: item.position)
-    assert [item.key for item in questions] == ["q2", "q1"]
-    correct = [o.key for o in questions[1].answer_options if o.is_correct]
-    assert correct == ["c"]
-    assert db_session.exec(select(Module).where(Module.key == "logic")).first() is None
-    # surviving rows keep their primary keys; the removed module's lesson is gone
-    assert ids(db_session)["lessons"] < before["lessons"]
-    assert ids(db_session)["questions"] == before["questions"]
-
-
-def test_seed_removes_quizzes_and_questions_dropped_from_content(db_session):
-    sync_content(
-        db_session,
-        [module("sets", 1, [lesson("a", 1)], [choice("q1", "a", 0), essay("q2", 1)])],
-    )
-
-    sync_content(db_session, [module("sets", 1, [lesson("a", 1)], [essay("q2", 0)])])
-    sets = db_session.exec(select(Module).where(Module.key == "sets")).one()
-    assert [item.key for item in sets.quiz.questions] == ["q2"]
-    assert not db_session.exec(select(AnswerOption)).all()
-
-    sync_content(db_session, [module("sets", 1, [lesson("a", 1)])])
     db_session.expire_all()
-    assert db_session.exec(select(Quiz)).first() is None
+    sets = db_session.exec(select(Module).where(Module.key == "sets")).one()
+    logic = db_session.exec(select(Module).where(Module.key == "logic")).one()
+    assert sets.title == "Edited"
+    assert [item.key for item in sets.lessons] == ["a"]
+    assert [item.key for item in sets.quiz.questions] == ["q"]
+    assert logic.position > sets.position
+    assert original["questions"] == ids(db_session)["questions"]
+
+
+def test_seed_restores_deleted_module(db_session):
+    records = [module("sets", 1, [lesson("intro", 1)])]
+    sync_content(db_session, records)
+    db_session.delete(db_session.exec(select(Module)).one())
+    db_session.flush()
+    sync_content(db_session, records)
+    assert db_session.exec(select(Module).where(Module.key == "sets")).one()
