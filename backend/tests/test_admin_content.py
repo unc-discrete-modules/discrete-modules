@@ -110,12 +110,9 @@ def test_quiz_replace_and_validate(client):
         ).status_code
         == 422
     )
-    assert (
-        client.get(f"/api/admin/modules/{module['id']}/quiz").json()["questions"][0][
-            "prompt"
-        ]
-        == "Updated"
-    )
+    admin_quiz = client.get(f"/api/admin/modules/{module['id']}/quiz")
+    assert admin_quiz.headers["cache-control"] == "no-store"
+    assert admin_quiz.json()["questions"][0]["prompt"] == "Updated"
     assert client.delete(f"/api/admin/quizzes/{quiz['id']}").status_code == 204
 
 
