@@ -10,6 +10,7 @@ import Login from './pages/Login'
 import ModuleCreation from './pages/ModuleCreation'
 import LessonCreation from './pages/LessonCreation'
 import ModuleEdit from './pages/ModuleEdit'
+import AdminHome from './pages/AdminHome'
 
 function Quiz() {
   return <h1>Quiz View</h1>
@@ -34,6 +35,7 @@ function App() {
               <Route element={<LearningLayout />}>
                 <Route element={<Layout />}>
                   <Route path="/" element={<Home />} />
+                  <Route path="/admin" element={<AdminHome />} />
                   <Route path="/modules/:moduleId" element={<Module />} />
                   <Route
                     path="/modules/:moduleId/lessons/:lessonId"
