@@ -7,6 +7,9 @@ import { CourseProvider } from './context/course-context'
 import { AuthProvider } from './context/auth-context'
 import RequireAuth from './components/RequireAuth'
 import Login from './pages/Login'
+import ModuleCreation from './pages/ModuleCreation'
+import LessonCreation from './pages/LessonCreation'
+import ModuleEdit from './pages/ModuleEdit'
 
 function Quiz() {
   return <h1>Quiz View</h1>
@@ -41,6 +44,12 @@ function App() {
                     element={<Quiz />}
                   />
                   <Route path="/modules/:moduleId/summary" element={<Quiz />} />
+                  <Route path="/create-module" element={<ModuleCreation />} />
+                  <Route
+                    path="/edit-module/:moduleId"
+                    element={<ModuleEdit />}
+                  />
+                  <Route path="/create-lesson" element={<LessonCreation />} />
                 </Route>
               </Route>
             </Route>
