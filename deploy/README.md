@@ -72,6 +72,13 @@ email-format NameID (`nameid`) or an attribute (`attribute`, also requiring
 unset, so sign-in fails closed until confirmed. See the
 [SAML guide](../backend/saml/README.md) for integration and renewal procedures.
 
+Set `ADMIN_EMAILS` in `deploy/configmap.yaml` to a JSON array of full UNC
+email addresses, for example `["admin@example.unc.edu"]`; the default `[]`
+grants no admin access. Matching is exact and case-sensitive after trimming
+surrounding whitespace. Invalid entries fail settings validation. Apply the
+ConfigMap and roll out the backend to load changes; existing sessions refresh
+their roles on the next authenticated request. Demo accounts remain students.
+
 To rotate a Secret, replace `oc create secret ...` with the same command plus
 `--dry-run=client -o yaml | oc apply -f -`, then restart the affected
 Deployments. Changing PostgreSQL's password Secret after database initialization

@@ -12,7 +12,9 @@ from src.services.auth import AuthenticatedUser, require_user
 
 @pytest.fixture
 def authenticated_user():
-    return AuthenticatedUser(1, "student@example.unc.edu", "test-csrf", "test-hash")
+    return AuthenticatedUser(
+        1, "student@example.unc.edu", "student", "test-csrf", "test-hash"
+    )
 
 
 @pytest.fixture(autouse=True)

@@ -5,12 +5,15 @@ from urllib.parse import urlsplit
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from src.email import validate_email
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     database_url: str | None = None
     allowed_origins: list[str] = Field(default_factory=list)
+    admin_emails: list[str] = Field(default_factory=list)
     content_dir: Path = Path(__file__).resolve().parents[2] / "content"
     environment: Literal["development", "production"] = "production"
     public_origin: str = "https://discrete-modules.apps.cloudapps.unc.edu"
@@ -50,6 +53,11 @@ class Settings(BaseSettings):
         if "*" in value:
             raise ValueError("ALLOWED_ORIGINS must list explicit origins, not '*'")
         return value
+
+    @field_validator("admin_emails")
+    @classmethod
+    def validate_admin_emails(cls, value: list[str]) -> list[str]:
+        return [validate_email(email) for email in value]
 
     @field_validator("database_url")
     @classmethod

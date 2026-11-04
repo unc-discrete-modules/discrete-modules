@@ -28,6 +28,7 @@ from src.services.auth import (
     create_session,
     establish_session,
     get_or_create_user,
+    reconcile_role,
     require_user,
     safe_return_to,
     token_hash,
@@ -87,6 +88,7 @@ def dev_login(request: Request, db: Db):
     now = int(time.time())
     cleanup_expired(db, now)
     user = get_or_create_user(db, DEV_ISSUER, DEV_EMAIL)
+    reconcile_role(user, request.app.state.settings)
     old_token = request.cookies.get(SESSION_COOKIE)
     previous_hashes = {token_hash(old_token)} if old_token else set()
     token = create_session(db, user, now + SESSION_TTL, previous_hashes)
@@ -182,7 +184,11 @@ def process_callback(request: Request, post: dict[str, str], db: Session) -> Res
         identity = saml.validate(post, transaction.request_id)
         return_to = safe_return_to(transaction.return_to)
         token, ttl = establish_session(
-            db, transaction, identity, request.cookies.get(SESSION_COOKIE)
+            db,
+            transaction,
+            identity,
+            request.cookies.get(SESSION_COOKIE),
+            request.app.state.settings,
         )
         response = RedirectResponse(return_to, status_code=303)
         set_cookie(response, request, SESSION_COOKIE, token, ttl)

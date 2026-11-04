@@ -9,6 +9,7 @@ from onelogin.saml2.settings import OneLogin_Saml2_Settings
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
 
 from src.config import Settings
+from src.email import validate_email
 
 ISSUER = "https://sso.unc.edu/idp"
 ENTITY_ID = "https://discrete-modules.apps.cloudapps.unc.edu/"
@@ -192,15 +193,7 @@ class SamlService:
                 raise SamlConfigurationError("Email mapping must be configured")
             if len(emails) != 1 or not isinstance(emails[0], str):
                 raise ValueError("Expected one email")
-            email = emails[0].strip()
-            if (
-                not email
-                or len(email) > 320
-                or email.count("@") != 1
-                or any(c.isspace() or ord(c) < 32 for c in email)
-                or not all(email.split("@"))
-            ):
-                raise ValueError("Invalid email")
+            email = validate_email(emails[0])
             response_id = auth.get_last_message_id()
             assertion_id = auth.get_last_assertion_id()
             expiry = auth.get_last_assertion_not_on_or_after()
