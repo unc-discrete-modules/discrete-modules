@@ -19,6 +19,7 @@ def test_admin_content_crud_and_order(client):
         assert response.status_code == 201, response.text
         return response.json()["id"]
 
+    existing_ids = [row["id"] for row in client.get("/api/admin/modules").json()]
     a, b = create("a"), create("b")
     conflict = client.post(
         "/api/admin/modules", json={"key": "a", "title": "A", "description": "D"}
@@ -26,9 +27,16 @@ def test_admin_content_crud_and_order(client):
     assert conflict.status_code == 409
     assert conflict.json()["error"]["code"] == "conflict"
     assert (
-        client.put("/api/admin/modules/order", json={"ids": [b, a]}).status_code == 200
+        client.put(
+            "/api/admin/modules/order", json={"ids": [b, a, *existing_ids]}
+        ).status_code
+        == 200
     )
-    assert [x["id"] for x in client.get("/api/admin/modules").json()] == [b, a]
+    assert [x["id"] for x in client.get("/api/admin/modules").json()] == [
+        b,
+        a,
+        *existing_ids,
+    ]
     assert (
         client.put("/api/admin/modules/order", json={"ids": [a, a]}).status_code == 422
     )

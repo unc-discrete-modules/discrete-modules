@@ -118,7 +118,7 @@ def test_seed_preserves_existing_trees_and_appends_new_modules(db_session):
 def test_seed_restores_deleted_module(db_session):
     records = [module("sets", 1, [lesson("intro", 1)])]
     sync_content(db_session, records)
-    db_session.delete(db_session.exec(select(Module)).one())
+    db_session.delete(db_session.exec(select(Module).where(Module.key == "sets")).one())
     db_session.flush()
     sync_content(db_session, records)
     assert db_session.exec(select(Module).where(Module.key == "sets")).one()
