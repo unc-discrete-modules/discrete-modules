@@ -51,6 +51,9 @@ export default function Login() {
             </a>
           )}
           {state.status === 'anonymous' && <DevLoginButton />}
+          {state.status === 'anonymous' && import.meta.env.DEV && (
+            <DevLoginButton admin />
+          )}
         </LoginCard>
       </div>
     </main>

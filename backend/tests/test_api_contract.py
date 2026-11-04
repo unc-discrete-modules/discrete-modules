@@ -20,6 +20,14 @@ def test_openapi_documents_every_contract_route():
 
     assert set(paths) == {
         "/api/",
+        "/api/admin/modules",
+        "/api/admin/modules/order",
+        "/api/admin/modules/{module_id}",
+        "/api/admin/modules/{module_id}/lessons",
+        "/api/admin/modules/{module_id}/lessons/order",
+        "/api/admin/modules/{module_id}/quiz",
+        "/api/admin/lessons/{lesson_id}",
+        "/api/admin/quizzes/{quiz_id}",
         "/api/modules",
         "/api/modules/{module_id}",
         "/api/modules/{module_id}/quiz",
@@ -59,3 +67,38 @@ def test_non_integer_id_is_422(client):
 
     assert response.status_code == 422
     assert response.json()["error"]["details"][0]["loc"] == ["path", "lesson_id"]
+
+
+def test_admin_routes_document_errors_and_summaries():
+    paths = create_app().openapi()["paths"]
+    for path, methods in paths.items():
+        if not path.startswith("/api/admin/"):
+            continue
+        for method, operation in methods.items():
+            assert operation["summary"]
+            assert operation["operationId"].startswith("admin_")
+            expected = {"401", "403", "503"}
+            if "{" in path:
+                expected |= {"404", "422"}
+            if method in {"post", "put", "patch"}:
+                expected |= {"409", "422"}
+            for status in expected:
+                ref = operation["responses"][status]["content"]["application/json"][
+                    "schema"
+                ]["$ref"]
+                assert ref.endswith("/ErrorResponse"), (path, method, status)
+
+
+def test_protected_writes_document_csrf_header():
+    paths = create_app().openapi()["paths"]
+    for path, method in (
+        ("/api/admin/modules", "post"),
+        ("/api/admin/quizzes/{quiz_id}", "put"),
+        ("/api/admin/lessons/{lesson_id}", "delete"),
+        ("/api/quizzes/{quiz_id}/submissions", "post"),
+        ("/api/auth/logout", "post"),
+    ):
+        parameters = paths[path][method]["parameters"]
+        csrf = next(p for p in parameters if p["name"] == "X-CSRF-Token")
+        assert csrf["in"] == "header"
+        assert "/api/auth/me" in csrf["description"]

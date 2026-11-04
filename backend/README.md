@@ -61,12 +61,17 @@ load them with:
 
 ```sh
 uv run python -m src.seed --check   # validate only; no database needed
-uv run python -m src.seed           # create or update rows in DATABASE_URL
+uv run python -m src.seed           # insert missing module trees into DATABASE_URL
 ```
 
-The seed matches rows by key, so it is safe to re-run: IDs stay stable, nothing
-is duplicated, and content removed from `content/` is removed from the
-database. `CONTENT_DIR` (or `--content-dir`) selects another directory.
+The seed skips any module whose key already exists, preserving its entire database
+content tree. New modules are appended in file order. Deleting a seeded module
+allows it to be inserted again on the next run. `CONTENT_DIR` (or `--content-dir`)
+selects another directory. Manage existing content through the admin API.
+
+The `/api/admin` endpoints manage modules, lessons and quizzes. Administrators can
+replace a quiz with its ordered questions and answer keys; existing question keys
+retain their IDs. Write requests require the session CSRF token and valid origin.
 
 ## Application database sessions
 

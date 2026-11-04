@@ -1,0 +1,311 @@
+"""Content administration operations."""
+
+from fastapi import HTTPException, Response
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import Session, select
+
+from src.models import AnswerOption, Lesson, Module, Question, Quiz
+from src.schemas.admin import (
+    LessonInput,
+    LessonPatch,
+    LessonResponse,
+    ModuleInput,
+    ModulePatch,
+    ModuleResponse,
+    OptionResponse,
+    Order,
+    OrderResponse,
+    QuestionResponse,
+    QuizInput,
+    QuizResponse,
+)
+
+Db = Session
+
+
+def get(db, model, id):
+    row = db.get(model, id)
+    if row is None:
+        raise HTTPException(404, f"{model.__name__} not found")
+    return row
+
+
+def save(db):
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409, "Content conflicts with an existing record") from exc
+
+
+def rows(db, model, parent=None):
+    query = select(model).order_by(model.position)
+    if parent is not None:
+        query = query.where(model.module_id == parent)
+    return list(db.exec(query))
+
+
+def reorder(db, items, ids):
+    if len(ids) != len(items) or set(ids) != {item.id for item in items}:
+        raise HTTPException(422, "Order must contain every ID exactly once")
+    # Move rows beyond the current range before assigning unique positions.
+    offset = max((item.position for item in items), default=-1) + len(items) + 1
+    for item in items:
+        item.position += offset
+        db.add(item)
+    db.flush()
+    by_id = {item.id: item for item in items}
+    for position, id in enumerate(ids):
+        by_id[id].position = position
+        db.add(by_id[id])
+    db.flush()
+
+
+def update_fields(row, payload):
+    values = payload.model_dump(exclude_unset=True)
+    if any(value is None for key, value in values.items() if key != "video_url"):
+        raise HTTPException(422, "Required fields cannot be null")
+    for key, value in values.items():
+        setattr(
+            row, key, str(value) if key == "video_url" and value is not None else value
+        )
+
+
+def module_data(row: Module) -> ModuleResponse:
+    return ModuleResponse(
+        id=row.id,
+        key=row.key,
+        title=row.title,
+        description=row.description,
+        position=row.position,
+    )
+
+
+def lesson_data(row: Lesson) -> LessonResponse:
+    return LessonResponse(
+        id=row.id,
+        module_id=row.module_id,
+        key=row.key,
+        title=row.title,
+        body=row.body,
+        video_url=row.video_url,
+        position=row.position,
+    )
+
+
+def quiz_data(db: Session, quiz: Quiz) -> QuizResponse:
+    questions = list(
+        db.exec(
+            select(Question)
+            .where(Question.quiz_id == quiz.id)
+            .order_by(Question.position)
+        )
+    )
+    result = []
+    for question in questions:
+        options = list(
+            db.exec(
+                select(AnswerOption)
+                .where(AnswerOption.question_id == question.id)
+                .order_by(AnswerOption.position)
+            )
+        )
+        result.append(
+            QuestionResponse(
+                id=question.id,
+                key=question.key,
+                type=question.type,
+                prompt=question.prompt,
+                answer=question.expected_answer,
+                options=[
+                    OptionResponse(text=o.text, correct=o.is_correct) for o in options
+                ]
+                if options
+                else None,
+            )
+        )
+    return QuizResponse(id=quiz.id, module_id=quiz.module_id, questions=result)
+
+
+def list_modules(db: Db) -> list[ModuleResponse]:
+    return [module_data(row) for row in rows(db, Module)]
+
+
+def create_module(data: ModuleInput, db: Db) -> ModuleResponse:
+    items = rows(db, Module)
+    row = Module(
+        **data.model_dump(), position=max((i.position for i in items), default=-1) + 1
+    )
+    db.add(row)
+    save(db)
+    db.refresh(row)
+    return module_data(row)
+
+
+def order_modules(data: Order, db: Db) -> OrderResponse:
+    reorder(db, rows(db, Module), data.ids)
+    save(db)
+    return OrderResponse(ids=data.ids)
+
+
+def read_module(module_id: int, db: Db) -> ModuleResponse:
+    return module_data(get(db, Module, module_id))
+
+
+def patch_module(module_id: int, data: ModulePatch, db: Db) -> ModuleResponse:
+    row = get(db, Module, module_id)
+    update_fields(row, data)
+    db.add(row)
+    save(db)
+    db.refresh(row)
+    return module_data(row)
+
+
+def delete_module(module_id: int, db: Db):
+    db.delete(get(db, Module, module_id))
+    db.flush()
+    items = rows(db, Module)
+    reorder(db, items, [i.id for i in items])
+    save(db)
+    return Response(status_code=204)
+
+
+def list_lessons(module_id: int, db: Db) -> list[LessonResponse]:
+    get(db, Module, module_id)
+    return [lesson_data(row) for row in rows(db, Lesson, module_id)]
+
+
+def create_lesson(module_id: int, data: LessonInput, db: Db) -> LessonResponse:
+    get(db, Module, module_id)
+    items = rows(db, Lesson, module_id)
+    values = data.model_dump()
+    if values["video_url"] is not None:
+        values["video_url"] = str(values["video_url"])
+    row = Lesson(
+        module_id=module_id,
+        **values,
+        position=max((i.position for i in items), default=-1) + 1,
+    )
+    db.add(row)
+    save(db)
+    db.refresh(row)
+    return lesson_data(row)
+
+
+def order_lessons(module_id: int, data: Order, db: Db) -> OrderResponse:
+    get(db, Module, module_id)
+    reorder(db, rows(db, Lesson, module_id), data.ids)
+    save(db)
+    return OrderResponse(ids=data.ids)
+
+
+def read_lesson(lesson_id: int, db: Db) -> LessonResponse:
+    return lesson_data(get(db, Lesson, lesson_id))
+
+
+def patch_lesson(lesson_id: int, data: LessonPatch, db: Db) -> LessonResponse:
+    row = get(db, Lesson, lesson_id)
+    update_fields(row, data)
+    db.add(row)
+    save(db)
+    db.refresh(row)
+    return lesson_data(row)
+
+
+def delete_lesson(lesson_id: int, db: Db):
+    row = get(db, Lesson, lesson_id)
+    module_id = row.module_id
+    db.delete(row)
+    db.flush()
+    items = rows(db, Lesson, module_id)
+    reorder(db, items, [i.id for i in items])
+    save(db)
+    return Response(status_code=204)
+
+
+def replace_questions(db, quiz, data):
+    existing = {
+        q.key: q for q in db.exec(select(Question).where(Question.quiz_id == quiz.id))
+    }
+    wanted = {question.key for question in data.questions}
+    # Temporary positions must be beyond both the old and new ranges.
+    offset = (
+        max((q.position for q in existing.values()), default=-1)
+        + len(data.questions)
+        + 1
+    )
+    for key, question in existing.items():
+        if key not in wanted:
+            db.delete(question)
+        else:
+            question.position += offset
+            db.add(question)
+    db.flush()
+    for position, item in enumerate(data.questions):
+        q = existing.get(item.key) or Question(quiz_id=quiz.id, key=item.key)
+        q.position, q.type, q.prompt, q.expected_answer = (
+            position,
+            item.type,
+            item.prompt,
+            item.answer,
+        )
+        db.add(q)
+        db.flush()
+        existing_options = {
+            option.key: option
+            for option in db.exec(
+                select(AnswerOption).where(AnswerOption.question_id == q.id)
+            )
+        }
+        wanted_options = {
+            chr(ord("a") + index) for index in range(len(item.options or []))
+        }
+        for key, option in existing_options.items():
+            if key not in wanted_options:
+                db.delete(option)
+            else:
+                option.is_correct = False
+                db.add(option)
+        db.flush()
+        for index, option in enumerate(item.options or []):
+            key = chr(ord("a") + index)
+            row = existing_options.get(key) or AnswerOption(
+                question_id=q.id, key=key, position=index
+            )
+            row.text = option.text
+            row.is_correct = option.correct
+            db.add(row)
+    db.flush()
+
+
+def create_quiz(module_id: int, data: QuizInput, db: Db) -> QuizResponse:
+    get(db, Module, module_id)
+    if db.exec(select(Quiz).where(Quiz.module_id == module_id)).first():
+        raise HTTPException(409, "Module already has a quiz")
+    quiz = Quiz(module_id=module_id)
+    db.add(quiz)
+    db.flush()
+    replace_questions(db, quiz, data)
+    save(db)
+    return quiz_data(db, quiz)
+
+
+def read_quiz(module_id: int, db: Db) -> QuizResponse:
+    get(db, Module, module_id)
+    quiz = db.exec(select(Quiz).where(Quiz.module_id == module_id)).first()
+    if quiz is None:
+        raise HTTPException(404, "Quiz not found")
+    return quiz_data(db, quiz)
+
+
+def update_quiz(quiz_id: int, data: QuizInput, db: Db) -> QuizResponse:
+    quiz = get(db, Quiz, quiz_id)
+    replace_questions(db, quiz, data)
+    save(db)
+    return quiz_data(db, quiz)
+
+
+def delete_quiz(quiz_id: int, db: Db):
+    db.delete(get(db, Quiz, quiz_id))
+    save(db)
+    return Response(status_code=204)

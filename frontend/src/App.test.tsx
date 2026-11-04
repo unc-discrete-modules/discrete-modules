@@ -249,12 +249,35 @@ describe('Demo login', () => {
     },
   )
 
+  it('offers a development-only admin demo sign in', async () => {
+    vi.stubEnv('DEV', true)
+    const fetch = vi.fn((path: string) =>
+      Promise.resolve(
+        path === '/api/auth/dev-login?admin=true'
+          ? new Response(null, { status: 204 })
+          : json({}, 401),
+      ),
+    )
+    vi.stubGlobal('fetch', fetch)
+    render(<App />)
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Sign in as demo admin' }),
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/auth/dev-login?admin=true',
+      expect.objectContaining({ method: 'POST', credentials: 'same-origin' }),
+    )
+  })
+
   it('shows the demo button in production', async () => {
     window.history.replaceState({}, '', '/login')
     vi.stubEnv('DEV', false)
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({}, 401)))
     render(<App />)
     await screen.findByRole('link', { name: 'Sign in with UNC' })
+    expect(
+      screen.queryByRole('button', { name: 'Sign in as demo admin' }),
+    ).not.toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Sign in as demo user' }),
     ).toBeInTheDocument()

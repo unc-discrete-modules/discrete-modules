@@ -17,8 +17,8 @@ content/
 ```
 
 The `NN-` prefix sets the order and the rest of the name is the stable key the
-seed matches rows by. Renaming a key creates a new row and removes the old one,
-so treat keys as permanent; changing a prefix only reorders.
+seed matches rows by. Renaming a module key creates a new module,
+so treat keys as permanent. Prefixes determine the order of newly inserted modules.
 
 Keys are lowercase words joined by hyphens. Module prefixes must be unique
 across the directory, and lesson prefixes unique within a module.
@@ -103,12 +103,10 @@ uv run python -m src.seed --check   # validate only; no database needed
 uv run python -m src.seed           # load into DATABASE_URL
 ```
 
-- Re-running is safe. Rows are matched by key and updated in place, so IDs do
-  not change and nothing is duplicated.
-- Content removed from this directory is removed from the database. This
-  directory is the source of truth; do not edit lessons in the database. Keys
-  are permanent once students have progress: deleting or renaming one will
-  also delete anything that references the old row.
+- Re-running skips existing modules and their entire content trees. Database
+  edits and database-only content remain untouched; new modules are appended.
+- Removing content here does not remove it from the database. A deleted module
+  still present here will be inserted again on the next seed run.
 - The whole run is one transaction. If validation or the database fails,
   nothing is changed.
 - Validation reports every problem at once (missing files, unknown fields,
@@ -122,7 +120,7 @@ the backend image is rebuilt and the deployment's `seed` init container loads th
 content when the backend is rolled out (see
 [`deploy/README.md`](../deploy/README.md#publish-content)). A failed seed keeps the
 previous version serving. Locally, `docker compose up` migrates and seeds
-automatically; run `docker compose run --rm seed` after editing content.
+automatically; run `docker compose run --rm seed` to insert new modules.
 
 Set `CONTENT_DIR` or pass `--content-dir` to load a different directory.
 
@@ -143,7 +141,7 @@ TeX input.
 
 ## Adding or converting content
 
-New lessons: add `NN-key.md`, then run `--check` and the seed. Prefer short
+New lessons in existing modules: use the admin API. For new modules, add `NN-key.md`, then run `--check` and the seed. Prefer short
 sections of a few paragraphs, each with its own `##` heading.
 
 The first twelve modules were converted once from Slidev slide decks. Slides

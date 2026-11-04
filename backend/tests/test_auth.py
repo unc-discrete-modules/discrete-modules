@@ -826,3 +826,23 @@ def test_demo_sessions_work_in_production(dev_client):
     dev_client.post("/api/auth/dev-login", headers={"Origin": "http://localhost:5173"})
     dev_client.app.state.settings.environment = "production"
     assert dev_client.get("/api/auth/me").status_code == 200
+
+
+def test_demo_admin_has_admin_access_only_in_development(dev_client, db_session):
+    response = dev_client.post(
+        "/api/auth/dev-login?admin=true", headers={"Origin": "http://localhost:5173"}
+    )
+    assert response.status_code == 204
+    me = dev_client.get("/api/auth/me").json()
+    assert me["email"] == "admin-demo@example.test"
+    assert dev_client.get("/api/admin/modules").status_code == 200
+    assert dev_client.get("/test/admin").json()["role"] == "admin"
+    dev_client.app.state.settings.environment = "production"
+    assert dev_client.get("/api/admin/modules").status_code == 403
+    assert db_session.get(User, me["id"]).role == "student"
+
+
+def test_demo_admin_login_rejected_in_production(client):
+    response = client.post("/api/auth/dev-login?admin=true", headers={"Origin": ORIGIN})
+    assert response.status_code == 404
+    assert client.get("/api/auth/me").status_code == 401

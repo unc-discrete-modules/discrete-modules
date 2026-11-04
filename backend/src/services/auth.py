@@ -7,7 +7,7 @@ from posixpath import normpath
 from typing import Annotated
 from urllib.parse import unquote, urlsplit
 
-from fastapi import Depends, HTTPException, Request, Security
+from fastapi import Depends, Header, HTTPException, Request, Security
 from fastapi.security import APIKeyCookie
 from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -24,6 +24,7 @@ LOGIN_TTL = 600
 SESSION_TTL = 8 * 60 * 60
 DEV_ISSUER = "urn:discrete-modules:development"
 DEV_EMAIL = "demo@example.test"
+DEV_ADMIN_EMAIL = "admin-demo@example.test"
 session_cookie = APIKeyCookie(
     name=SESSION_COOKIE, scheme_name="SessionCookie", auto_error=False
 )
@@ -63,7 +64,15 @@ class AuthenticatedUser:
 
 
 def require_user(
-    request: Request, token: Annotated[str | None, Security(session_cookie)]
+    request: Request,
+    token: Annotated[str | None, Security(session_cookie)],
+    csrf_token: Annotated[
+        str | None,
+        Header(
+            alias="X-CSRF-Token",
+            description="Required for write requests. Get the token from GET /api/auth/me.",
+        ),
+    ] = None,
 ) -> AuthenticatedUser:
     if not token or len(token) > 128:
         raise HTTPException(401, "Authentication required")
@@ -76,7 +85,7 @@ def require_user(
             if not user:
                 raise HTTPException(401, "Authentication required")
             if request.method not in ("GET", "HEAD", "OPTIONS"):
-                csrf = request.headers.get("X-CSRF-Token", "")
+                csrf = csrf_token or ""
                 if (
                     request.headers.get("origin")
                     != request.app.state.settings.public_origin
@@ -148,7 +157,12 @@ def get_or_create_user(db: Session, issuer: str, email: str) -> User:
 def reconcile_role(user: User, settings: Settings) -> None:
     user.role = (
         "admin"
-        if user.issuer == ISSUER and user.email in settings.admin_emails
+        if (user.issuer == ISSUER and user.email in settings.admin_emails)
+        or (
+            settings.environment == "development"
+            and user.issuer == DEV_ISSUER
+            and user.email == DEV_ADMIN_EMAIL
+        )
         else "student"
     )
 

@@ -50,6 +50,29 @@ def test_json_submission_preflight_is_allowed(client):
     assert "POST" in response.headers["access-control-allow-methods"]
 
 
+@pytest.mark.parametrize("method", ["PUT", "PATCH", "DELETE"])
+def test_admin_write_preflight_is_allowed(client, method):
+    response = client.options(
+        "/api/admin/modules/1",
+        headers={
+            "Origin": LOCAL_ORIGIN,
+            "Access-Control-Request-Method": method,
+            "Access-Control-Request-Headers": "content-type, x-csrf-token",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == LOCAL_ORIGIN
+    assert method in response.headers["access-control-allow-methods"]
+
+
+def test_admin_error_response_is_not_cached(client):
+    response = client.get("/api/admin/modules/1/quiz")
+
+    assert response.status_code == 403
+    assert response.headers["cache-control"] == "no-store"
+
+
 def test_no_origins_are_allowed_by_default(monkeypatch):
     # An empty list overrides any ALLOWED_ORIGINS set in a local .env file.
     monkeypatch.setenv("ALLOWED_ORIGINS", "[]")

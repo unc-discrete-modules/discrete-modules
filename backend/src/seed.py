@@ -1,17 +1,10 @@
-"""Load ``content/`` into the database. Safe to run repeatedly.
-
-Rows are matched by their stable keys, so re-running updates content in place
-and keeps primary keys that future progress records will reference. Anything
-no longer present in ``content/`` is removed so the repository stays the single
-source of truth.
-"""
+"""Insert missing modules from ``content/`` without changing existing trees."""
 
 import argparse
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from sqlalchemy import update
 from sqlmodel import Session, select
 
 from src.config import Settings
@@ -19,16 +12,9 @@ from src.database import get_engine
 from src.models import AnswerOption, Lesson, Module, Question, Quiz
 from src.services.content_loader import (
     ContentError,
-    LessonRecord,
     ModuleRecord,
-    QuestionRecord,
     load_content,
 )
-
-# Position columns are unique per parent. Moving existing rows far out of the way
-# before assigning final positions lets content be reordered or swapped without
-# transient collisions.
-POSITION_SHIFT = 1_000_000
 
 
 @dataclass(frozen=True)
@@ -39,131 +25,67 @@ class SeedSummary:
 
 
 def sync_content(session: Session, records: list[ModuleRecord]) -> SeedSummary:
-    """Make the database match ``records``. Flushes; the caller commits."""
-    existing = {module.key: module for module in session.exec(select(Module))}
-    wanted = {record.key for record in records}
-    for key, module in existing.items():
-        if key not in wanted:
-            session.delete(module)
-    session.flush()
-
-    session.exec(update(Module).values(position=Module.position + POSITION_SHIFT))
-    for record in records:
-        module = existing.get(record.key) or Module(key=record.key)
-        module.title = record.title
-        module.description = record.description
-        module.position = record.position
+    """Insert new module trees; flush without committing."""
+    existing = list(session.exec(select(Module)))
+    keys = {row.key for row in existing}
+    position = max((row.position for row in existing), default=-1) + 1
+    inserted = []
+    for record in sorted(records, key=lambda item: item.position):
+        if record.key in keys:
+            continue
+        module = Module(
+            key=record.key,
+            title=record.title,
+            description=record.description,
+            position=position,
+        )
         session.add(module)
         session.flush()
-        _sync_lessons(session, module, record.lessons)
-        _sync_quiz(session, module, record.questions)
-
-    return SeedSummary(
-        modules=len(records),
-        lessons=sum(len(record.lessons) for record in records),
-        questions=sum(len(record.questions or ()) for record in records),
-    )
-
-
-def _sync_lessons(
-    session: Session, module: Module, records: tuple[LessonRecord, ...]
-) -> None:
-    rows = {
-        lesson.key: lesson
-        for lesson in session.exec(select(Lesson).where(Lesson.module_id == module.id))
-    }
-    wanted = {record.key for record in records}
-    for key, lesson in rows.items():
-        if key not in wanted:
-            session.delete(lesson)
-    session.flush()
-
-    session.exec(
-        update(Lesson)
-        .where(Lesson.module_id == module.id)
-        .values(position=Lesson.position + POSITION_SHIFT)
-    )
-    for record in records:
-        lesson = rows.get(record.key) or Lesson(module_id=module.id, key=record.key)
-        lesson.title = record.title
-        lesson.body = record.body
-        lesson.video_url = record.video_url
-        lesson.position = record.position
-        session.add(lesson)
-    session.flush()
-
-
-def _sync_quiz(
-    session: Session, module: Module, records: tuple[QuestionRecord, ...] | None
-) -> None:
-    quiz = session.exec(select(Quiz).where(Quiz.module_id == module.id)).first()
-    if records is None:
-        if quiz is not None:
-            session.delete(quiz)
+        for index, lesson in enumerate(record.lessons):
+            session.add(
+                Lesson(
+                    module_id=module.id,
+                    key=lesson.key,
+                    title=lesson.title,
+                    body=lesson.body,
+                    video_url=lesson.video_url,
+                    position=index,
+                )
+            )
+        if record.questions is not None:
+            quiz = Quiz(module_id=module.id)
+            session.add(quiz)
             session.flush()
-        return
-    if quiz is None:
-        quiz = Quiz(module_id=module.id)
-        session.add(quiz)
-        session.flush()
-
-    rows = {
-        question.key: question
-        for question in session.exec(
-            select(Question).where(Question.quiz_id == quiz.id)
-        )
-    }
-    wanted = {record.key for record in records}
-    for key, question in rows.items():
-        if key not in wanted:
-            session.delete(question)
+            for index, item in enumerate(record.questions):
+                question = Question(
+                    quiz_id=quiz.id,
+                    key=item.key,
+                    type=item.type,
+                    prompt=item.prompt,
+                    expected_answer=item.expected_answer,
+                    position=index,
+                )
+                session.add(question)
+                session.flush()
+                for option in item.options:
+                    session.add(
+                        AnswerOption(
+                            question_id=question.id,
+                            key=option.key,
+                            text=option.text,
+                            is_correct=option.is_correct,
+                            position=option.position,
+                        )
+                    )
+        inserted.append(record)
+        keys.add(record.key)
+        position += 1
     session.flush()
-
-    session.exec(
-        update(Question)
-        .where(Question.quiz_id == quiz.id)
-        .values(position=Question.position + POSITION_SHIFT)
+    return SeedSummary(
+        len(inserted),
+        sum(len(r.lessons) for r in inserted),
+        sum(len(r.questions or ()) for r in inserted),
     )
-    for record in records:
-        question = rows.get(record.key) or Question(quiz_id=quiz.id, key=record.key)
-        question.type = record.type
-        question.prompt = record.prompt
-        question.expected_answer = record.expected_answer
-        question.position = record.position
-        session.add(question)
-        session.flush()
-        _sync_options(session, question, record)
-
-
-def _sync_options(session: Session, question: Question, record: QuestionRecord) -> None:
-    rows = {
-        option.key: option
-        for option in session.exec(
-            select(AnswerOption).where(AnswerOption.question_id == question.id)
-        )
-    }
-    wanted = {option.key for option in record.options}
-    for key, option in rows.items():
-        if key not in wanted:
-            session.delete(option)
-    session.flush()
-
-    # At most one option per question may be correct; clearing the flags first
-    # lets the correct answer move to a different option in a single run.
-    session.exec(
-        update(AnswerOption)
-        .where(AnswerOption.question_id == question.id)
-        .values(position=AnswerOption.position + POSITION_SHIFT, is_correct=False)
-    )
-    for option_record in record.options:
-        option = rows.get(option_record.key) or AnswerOption(
-            question_id=question.id, key=option_record.key
-        )
-        option.text = option_record.text
-        option.is_correct = option_record.is_correct
-        option.position = option_record.position
-        session.add(option)
-    session.flush()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -198,8 +120,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     with Session(get_engine()) as session, session.begin():
-        sync_content(session, records)
-    print(f"Seeded {summary}")
+        result = sync_content(session, records)
+    print(
+        f"Inserted {result.modules} modules, {result.lessons} lessons, {result.questions} questions"
+    )
     return 0
 
 

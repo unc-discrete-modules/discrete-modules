@@ -17,6 +17,7 @@ from src.database import get_db_session
 from src.errors import UNAUTHORIZED
 from src.models import AuthSession, LoginTransaction
 from src.services.auth import (
+    DEV_ADMIN_EMAIL,
     DEV_EMAIL,
     DEV_ISSUER,
     LOGIN_TTL,
@@ -84,10 +85,12 @@ def require_same_origin(request: Request):
 @router.post(
     "/api/auth/dev-login", status_code=204, dependencies=[Depends(require_same_origin)]
 )
-def dev_login(request: Request, db: Db):
+def dev_login(request: Request, db: Db, admin: bool = False):
+    if admin and request.app.state.settings.environment != "development":
+        raise HTTPException(404, "Demo admin login unavailable")
     now = int(time.time())
     cleanup_expired(db, now)
-    user = get_or_create_user(db, DEV_ISSUER, DEV_EMAIL)
+    user = get_or_create_user(db, DEV_ISSUER, DEV_ADMIN_EMAIL if admin else DEV_EMAIL)
     reconcile_role(user, request.app.state.settings)
     old_token = request.cookies.get(SESSION_COOKIE)
     previous_hashes = {token_hash(old_token)} if old_token else set()
