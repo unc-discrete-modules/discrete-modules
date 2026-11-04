@@ -2,12 +2,12 @@ import hmac
 import logging
 import secrets
 import time
-from typing import Annotated
+from typing import Annotated, Literal
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlmodel import Session, select
@@ -51,7 +51,16 @@ MAX_SAML_BODY = 1024 * 1024
 class CurrentUserResponse(BaseModel):
     id: int
     email: str
-    csrf_token: str
+    onyen: str | None = Field(
+        description="UNC Onyen; null until released by UNC at the user's next login."
+    )
+    display_name: str | None = Field(
+        description="Name to show in the UI; null until released by UNC."
+    )
+    role: Literal["student", "admin"] = Field(
+        description="Hint for the UI; the server enforces access on every request."
+    )
+    csrf_token: str = Field(description="Send as X-CSRF-Token on write requests.")
 
 
 def saml_service(request: Request) -> SamlService:
@@ -91,6 +100,8 @@ def dev_login(request: Request, db: Db, admin: bool = False):
     now = int(time.time())
     cleanup_expired(db, now)
     user = get_or_create_user(db, DEV_ISSUER, DEV_ADMIN_EMAIL if admin else DEV_EMAIL)
+    user.onyen = "admin-demo" if admin else "demo"
+    user.display_name = "Demo Admin" if admin else "Demo User"
     reconcile_role(user, request.app.state.settings)
     old_token = request.cookies.get(SESSION_COOKIE)
     previous_hashes = {token_hash(old_token)} if old_token else set()
@@ -147,7 +158,14 @@ def metadata(saml: Saml):
 @router.get("/api/auth/me", response_model=CurrentUserResponse, responses=UNAUTHORIZED)
 def me(user: CurrentUser, response: Response):
     response.headers["Cache-Control"] = "no-store"
-    return CurrentUserResponse(id=user.id, email=user.email, csrf_token=user.csrf_token)
+    return CurrentUserResponse(
+        id=user.id,
+        email=user.email,
+        onyen=user.onyen,
+        display_name=user.display_name,
+        role=user.role,
+        csrf_token=user.csrf_token,
+    )
 
 
 @router.post("/api/auth/logout", status_code=204, responses=UNAUTHORIZED)

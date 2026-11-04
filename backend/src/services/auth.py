@@ -61,6 +61,8 @@ class AuthenticatedUser:
     role: str
     csrf_token: str
     token_hash: str
+    onyen: str | None = None
+    display_name: str | None = None
 
 
 def require_user(
@@ -99,7 +101,13 @@ def require_user(
             if user.role != previous_role:
                 db.commit()
             return AuthenticatedUser(
-                user.id, user.email, user.role, session.csrf_token, session.token_hash
+                user.id,
+                user.email,
+                user.role,
+                session.csrf_token,
+                session.token_hash,
+                user.onyen,
+                user.display_name,
             )
     except (SQLAlchemyError, RuntimeError) as exc:
         raise HTTPException(503, "Authentication service unavailable") from exc
@@ -208,6 +216,8 @@ def establish_session(
     db.flush()
     user = get_or_create_user(db, ISSUER, identity.email)
     reconcile_role(user, settings)
+    user.onyen = identity.onyen
+    user.display_name = identity.display_name
     previous_hashes = set()
     if transaction.previous_session_hash:
         previous_hashes.add(transaction.previous_session_hash)
