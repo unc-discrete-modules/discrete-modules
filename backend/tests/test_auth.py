@@ -150,7 +150,8 @@ def test_signed_login_roles(
     response, _, _ = authenticate(client, certificates, email=email)
     assert response.headers["location"] == "/modules/1"
     me = client.get("/api/auth/me").json()
-    assert set(me) == {"id", "email", "csrf_token"}
+    assert set(me) == {"id", "email", "onyen", "display_name", "role", "csrf_token"}
+    assert me["role"] == expected
     assert client.get(f"/test/progress/{me['id']}").json()["role"] == expected
 
 
@@ -487,6 +488,75 @@ def test_explicit_email_attribute(saml_settings, certificates):
         SamlService(saml_settings).validate({"SAMLResponse": value}, "_request")
 
 
+ONYEN_ATTRIBUTE = "urn:oid:1.3.6.1.4.1.5923.1.1.1.6"
+NAME_ATTRIBUTE = "urn:oid:2.16.840.1.113730.3.1.241"
+
+
+def with_profile(**attributes):
+    def add(root):
+        statement = root.find(".//saml:AttributeStatement", C.NSMAP)
+        for name, values in attributes.items():
+            attribute = etree.SubElement(
+                statement, f"{{{C.NS_SAML}}}Attribute", Name=name
+            )
+            for value in values:
+                etree.SubElement(
+                    attribute, f"{{{C.NS_SAML}}}AttributeValue"
+                ).text = value
+
+    return add
+
+
+@pytest.mark.parametrize(
+    "attributes,expected",
+    [
+        (
+            {ONYEN_ATTRIBUTE: ["  sstudent "], NAME_ATTRIBUTE: ["Sam Student"]},
+            ("sstudent", "Sam Student"),
+        ),
+        ({ONYEN_ATTRIBUTE: ["a", "b"], NAME_ATTRIBUTE: [" "]}, (None, None)),
+        ({ONYEN_ATTRIBUTE: ["x" * 256]}, (None, None)),
+        ({}, (None, None)),
+    ],
+)
+def test_optional_profile_attributes(saml_settings, certificates, attributes, expected):
+    saml_settings.saml_onyen_attribute = ONYEN_ATTRIBUTE
+    saml_settings.saml_display_name_attribute = NAME_ATTRIBUTE
+    value = saml_response(
+        *certificates[:2], "_request", mutate=with_profile(**attributes)
+    )
+    identity = SamlService(saml_settings).validate({"SAMLResponse": value}, "_request")
+    assert (identity.onyen, identity.display_name) == expected
+
+
+def test_profile_attributes_ignored_when_unmapped(saml_settings, certificates):
+    value = saml_response(
+        *certificates[:2], "_request", mutate=with_profile(**{ONYEN_ATTRIBUTE: ["x"]})
+    )
+    identity = SamlService(saml_settings).validate({"SAMLResponse": value}, "_request")
+    assert (identity.onyen, identity.display_name) == (None, None)
+
+
+def test_me_returns_profile_and_refreshes_it_on_login(client, certificates):
+    settings = client.app.state.settings
+    settings.saml_onyen_attribute = ONYEN_ATTRIBUTE
+    settings.saml_display_name_attribute = NAME_ATTRIBUTE
+    authenticate(
+        client,
+        certificates,
+        mutate=with_profile(**{ONYEN_ATTRIBUTE: ["sstudent"], NAME_ATTRIBUTE: ["Sam"]}),
+    )
+    me = client.get("/api/auth/me").json()
+    assert (me["onyen"], me["display_name"], me["role"]) == (
+        "sstudent",
+        "Sam",
+        "student",
+    )
+    authenticate(client, certificates)
+    me = client.get("/api/auth/me").json()
+    assert (me["onyen"], me["display_name"]) == (None, None)
+
+
 def test_unconfigured_mapping_fails_closed(client):
     client.app.state.settings.saml_email_source = None
     assert client.get("/api/auth/login").status_code == 503
@@ -751,6 +821,9 @@ def test_dev_login_creates_normal_session_without_saml(
     me = dev_client.get("/api/auth/me")
     assert me.status_code == 200
     assert me.json()["email"] == "demo@example.test"
+    assert me.json()["onyen"] == "demo"
+    assert me.json()["display_name"] == "Demo User"
+    assert me.json()["role"] == "student"
     assert dev_client.get(f"/api/lessons/{auth_lesson.id}").status_code == 200
     user = db_session.get(User, me.json()["id"])
     assert user.issuer == "urn:discrete-modules:development"

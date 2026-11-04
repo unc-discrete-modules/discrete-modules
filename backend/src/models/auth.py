@@ -14,6 +14,8 @@ class User(ModelBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     issuer: str = Field(max_length=255)
     email: str = Field(max_length=320)
+    onyen: str | None = Field(default=None, max_length=255)
+    display_name: str | None = Field(default=None, max_length=255)
     role: str = Field(
         default="student", max_length=7, sa_column_kwargs={"server_default": "student"}
     )
