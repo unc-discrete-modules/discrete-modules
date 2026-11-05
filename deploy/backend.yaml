@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend
+  annotations:
+    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"discrete-modules-backend:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"backend\")].image"},{"from":{"kind":"ImageStreamTag","name":"discrete-modules-backend:latest"},"fieldPath":"spec.template.spec.initContainers[0].image"},{"from":{"kind":"ImageStreamTag","name":"discrete-modules-backend:latest"},"fieldPath":"spec.template.spec.initContainers[1].image"}]'
   labels:
     app.kubernetes.io/name: discrete-modules
     app.kubernetes.io/component: backend

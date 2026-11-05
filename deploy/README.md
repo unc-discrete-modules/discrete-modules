@@ -86,26 +86,32 @@ also updates the database password when the PostgreSQL pod restarts.
 
 ## Apply the manifests
 
+The application images in the Deployment and ImageStream manifests use
+`ghcr.io/1drturtle/discrete-modules-frontend:latest` and
+`ghcr.io/1drturtle/discrete-modules-backend:latest`. If your images are published
+under a different registry or owner, update both references for each image. The
+PostgreSQL image is configured separately in `postgres.yaml`.
+
+The ImageStreams periodically import the upstream `latest` tags. Image change
+triggers update the frontend and all three backend containers together when a
+new image is imported. The GHCR Secret must exist before applying the streams;
+it supplies credentials for importing and pulling private images.
+
 Render and inspect the resources before applying them:
 
 ```sh
 oc kustomize deploy
 oc apply --dry-run=client --validate=false -k deploy
 oc apply -k deploy
+oc get imagestreams
+oc describe imagestream discrete-modules-frontend
+oc describe imagestream discrete-modules-backend
 ```
 
-The checked-in manifests use `latest` and always pull the application images.
-For a repeatable release, update both Deployments to the immutable commit SHA
-published by CI:
-
-```sh
-IMAGE_TAG=<git-commit-sha>
-oc set image deployment/frontend frontend="ghcr.io/1drturtle/discrete-modules-frontend:${IMAGE_TAG}"
-oc set image deployment/backend \
-  backend="ghcr.io/1drturtle/discrete-modules-backend:${IMAGE_TAG}" \
-  migrate="ghcr.io/1drturtle/discrete-modules-backend:${IMAGE_TAG}" \
-  seed="ghcr.io/1drturtle/discrete-modules-backend:${IMAGE_TAG}"
-```
+Confirm both imports succeed before checking the rollouts. Scheduled imports
+are periodic; to import immediately,
+run `oc import-image discrete-modules-frontend:latest` and
+`oc import-image discrete-modules-backend:latest`.
 
 Wait for the database, migration and seed init containers, API, and frontend to become
 ready:
@@ -130,14 +136,18 @@ modules, lessons, and quizzes through the admin API:
 1. Edit `content/` (format in [content/README.md](../content/README.md)) and open
    a pull request. CI runs `src.seed --check` and fails on invalid content.
 2. Merge to `main`. CI publishes a new backend image.
-3. Roll the backend so the new image is pulled and seeded:
+3. Wait for the scheduled import or request it immediately:
 
    ```sh
-   oc rollout restart deployment/backend
+   oc import-image discrete-modules-backend:latest
    oc rollout status deployment/backend --timeout=5m
    ```
 
-The seed appends new modules and refreshes lessons that were not edited in the database. It runs in one transaction,
+   Confirm the ImageStream imported the expected image before relying on the
+   rollout status; an import can fail or find no image change.
+
+The seed appends new modules and refreshes lessons that were not edited in the
+database. It runs in one transaction,
 so a failed run changes nothing; the new pod stays in `Init:Error` or
 `Init:CrashLoopBackOff` and the previous pod keeps serving. Find the cause with:
 
@@ -193,6 +203,10 @@ oc rollout undo deployment/backend
 oc rollout status deployment/backend --timeout=5m
 oc rollout status deployment/frontend --timeout=5m
 ```
+
+An active image trigger can restore the image currently selected by the
+ImageStream. For a lasting rollback, publish or select a previous upstream
+image and import it into the ImageStream.
 
 Database schema migrations are forward-only. Before rolling back across a
 schema change, confirm the previous application image remains compatible with
