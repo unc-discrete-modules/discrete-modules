@@ -14,6 +14,12 @@
 
 @theme {
   --color-muted-navy: rgb(54, 54, 86);
+  --color-light-blue: rgb(136, 183, 249);
+  --color-light-green: rgb(120, 217, 135);
+  --color-delete-red: rgb(227, 102, 102);
+  --color-bright-blue: blue-600;
+  --color-lightest-blue: rgb(245, 250, 255);
+  --color-lightest-green: rgb(247, 255, 248);
 }
 
 :root {
