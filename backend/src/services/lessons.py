@@ -2,17 +2,21 @@ from sqlmodel import Session, select
 
 from src import models
 from src.schemas.lesson import Lesson
+from src.services.visibility import is_visible
 
 
 def get_lesson(session: Session, lesson_id: int) -> Lesson | None:
     row = session.get(models.Lesson, lesson_id)
-    if row is None:
+    if row is None or not is_visible(row):
         return None
 
     lessons = list(
         session.exec(
             select(models.Lesson)
-            .where(models.Lesson.module_id == row.module_id)
+            .where(
+                models.Lesson.module_id == row.module_id,
+                models.Lesson.archived.is_(False),
+            )
             .order_by(models.Lesson.position)
         )
     )

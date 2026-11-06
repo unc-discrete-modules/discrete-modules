@@ -149,10 +149,11 @@ oc logs deployment/backend -c seed
 
 Fix the content and publish again, or run `oc rollout undo deployment/backend`.
 
-Removing content from `content/` does not delete database content. A module
-that is deleted from the database while still present in `content/` will be
-inserted again on the next seed run. Deletions through the API cascade through
-the current content hierarchy; a progress deletion policy remains future work.
+Removing content from `content/` does not remove it from the database. Deleting
+a module, lesson, or quiz through the admin API archives it instead of removing
+rows, so it stays hidden across restarts and deploys (the seed treats an archived
+module as existing) and student progress is kept. Restore it with the matching
+`POST .../restore` endpoint.
 
 ## Smoke tests
 

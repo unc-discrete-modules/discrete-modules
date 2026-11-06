@@ -10,22 +10,13 @@ def test_modules_are_listed_in_display_order(client, db_session):
 
     assert response.status_code == 200
     listed = [m for m in response.json() if m["id"] in {later.id, earlier.id}]
-    assert listed == [
-        {
-            "id": earlier.id,
-            "title": "Logic",
-            "description": "About Logic.",
-            "display_order": 1_900_000_001,
-        },
-        {
-            "id": later.id,
-            "title": "Graphs",
-            "description": "About Graphs.",
-            "display_order": 1_900_000_002,
-        },
+    assert [(m["id"], m["title"], m["description"]) for m in listed] == [
+        (earlier.id, "Logic", "About Logic."),
+        (later.id, "Graphs", "About Graphs."),
     ]
-    all_positions = [m["display_order"] for m in response.json()]
-    assert all_positions == sorted(all_positions)
+    assert [m["display_order"] for m in response.json()] == list(
+        range(len(response.json()))
+    )
 
 
 def test_module_detail_lists_lessons_in_order(client, db_session):
@@ -38,6 +29,8 @@ def test_module_detail_lists_lessons_in_order(client, db_session):
     )
     lessons = {lesson.title: lesson.id for lesson in module.lessons}
 
+    listed_ids = [m["id"] for m in client.get("/api/modules").json()]
+
     response = client.get(f"/api/modules/{module.id}")
 
     assert response.status_code == 200
@@ -45,7 +38,7 @@ def test_module_detail_lists_lessons_in_order(client, db_session):
         "id": module.id,
         "title": "Logic",
         "description": "About Logic.",
-        "display_order": 1_900_000_003,
+        "display_order": listed_ids.index(module.id),
         "quiz_id": module.quiz.id,
         "lessons": [
             {"id": lessons["First"], "title": "First"},

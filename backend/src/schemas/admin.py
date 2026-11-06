@@ -34,7 +34,6 @@ class ModuleInput(Input):
 
 
 class ModulePatch(Input):
-    key: Key | None = None
     title: Title | None = None
     description: Text | None = None
 
@@ -109,6 +108,7 @@ class ModuleResponse(BaseModel):
     title: str
     description: str
     position: int
+    archived: bool
 
 
 class LessonResponse(BaseModel):
@@ -119,6 +119,7 @@ class LessonResponse(BaseModel):
     body: str
     video_url: HttpUrl | None
     position: int
+    archived: bool
 
 
 class OptionResponse(BaseModel):
@@ -138,6 +139,7 @@ class QuestionResponse(BaseModel):
 class QuizResponse(BaseModel):
     id: int
     module_id: int
+    archived: bool
     questions: list[QuestionResponse]
 
 

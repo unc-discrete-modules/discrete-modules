@@ -38,27 +38,65 @@ def save(db):
         raise HTTPException(409, "Content conflicts with an existing record") from exc
 
 
-def rows(db, model, parent=None):
+def rows(db, model, parent=None, include_archived=False):
     query = select(model).order_by(model.position)
     if parent is not None:
         query = query.where(model.module_id == parent)
+    if not include_archived:
+        query = query.where(model.archived.is_(False))
     return list(db.exec(query))
 
 
-def reorder(db, items, ids):
+def next_position(db, model, parent=None):
+    # Archived rows keep their slot, so they count when appending.
+    items = rows(db, model, parent, include_archived=True)
+    return max((i.position for i in items), default=-1) + 1
+
+
+def reorder(db, model, parent, ids):
+    items = rows(db, model, parent)
     if len(ids) != len(items) or set(ids) != {item.id for item in items}:
-        raise HTTPException(422, "Order must contain every ID exactly once")
-    # Move rows beyond the current range before assigning unique positions.
-    offset = max((item.position for item in items), default=-1) + len(items) + 1
+        raise HTTPException(422, "Order must contain every active ID exactly once")
+    # Active rows are permuted among the slots they already occupy, so archived
+    # rows stay put and a restore returns to its original place.
+    slots = sorted(item.position for item in items)
+    # Move rows beyond every position, archived included, before reassigning.
+    offset = next_position(db, model, parent)
     for item in items:
         item.position += offset
         db.add(item)
     db.flush()
     by_id = {item.id: item for item in items}
-    for position, id in enumerate(ids):
-        by_id[id].position = position
+    for slot, id in zip(slots, ids):
+        by_id[id].position = slot
         db.add(by_id[id])
     db.flush()
+
+
+def set_archived(db, model, id, archived):
+    row = get(db, model, id)
+    row.archived = archived
+    db.add(row)
+    save(db)
+    db.refresh(row)
+    return row
+
+
+def reject_archived_key(db, model, key, parent=None):
+    query = select(model).where(model.key == key, model.archived.is_(True))
+    if parent is not None:
+        query = query.where(model.module_id == parent)
+    if db.exec(query).first():
+        raise HTTPException(
+            409, f"An archived {model.__name__.lower()} has this key; restore it"
+        )
+
+
+def require_active_module(db, module_id):
+    module = get(db, Module, module_id)
+    if module.archived:
+        raise HTTPException(409, "Module is archived; restore it first")
+    return module
 
 
 def update_fields(row, payload):
@@ -78,6 +116,7 @@ def module_data(row: Module) -> ModuleResponse:
         title=row.title,
         description=row.description,
         position=row.position,
+        archived=row.archived,
     )
 
 
@@ -90,6 +129,7 @@ def lesson_data(row: Lesson) -> LessonResponse:
         body=row.body,
         video_url=row.video_url,
         position=row.position,
+        archived=row.archived,
     )
 
 
@@ -124,18 +164,18 @@ def quiz_data(db: Session, quiz: Quiz) -> QuizResponse:
                 else None,
             )
         )
-    return QuizResponse(id=quiz.id, module_id=quiz.module_id, questions=result)
+    return QuizResponse(
+        id=quiz.id, module_id=quiz.module_id, archived=quiz.archived, questions=result
+    )
 
 
-def list_modules(db: Db) -> list[ModuleResponse]:
-    return [module_data(row) for row in rows(db, Module)]
+def list_modules(db: Db, include_archived: bool = False) -> list[ModuleResponse]:
+    return [module_data(row) for row in rows(db, Module, None, include_archived)]
 
 
 def create_module(data: ModuleInput, db: Db) -> ModuleResponse:
-    items = rows(db, Module)
-    row = Module(
-        **data.model_dump(), position=max((i.position for i in items), default=-1) + 1
-    )
+    reject_archived_key(db, Module, data.key)
+    row = Module(**data.model_dump(), position=next_position(db, Module))
     db.add(row)
     save(db)
     db.refresh(row)
@@ -143,7 +183,7 @@ def create_module(data: ModuleInput, db: Db) -> ModuleResponse:
 
 
 def order_modules(data: Order, db: Db) -> OrderResponse:
-    reorder(db, rows(db, Module), data.ids)
+    reorder(db, Module, None, data.ids)
     save(db)
     return OrderResponse(ids=data.ids)
 
@@ -161,30 +201,32 @@ def patch_module(module_id: int, data: ModulePatch, db: Db) -> ModuleResponse:
     return module_data(row)
 
 
-def delete_module(module_id: int, db: Db):
-    db.delete(get(db, Module, module_id))
-    db.flush()
-    items = rows(db, Module)
-    reorder(db, items, [i.id for i in items])
-    save(db)
+def archive_module(module_id: int, db: Db):
+    set_archived(db, Module, module_id, True)
     return Response(status_code=204)
 
 
-def list_lessons(module_id: int, db: Db) -> list[LessonResponse]:
+def restore_module(module_id: int, db: Db) -> ModuleResponse:
+    return module_data(set_archived(db, Module, module_id, False))
+
+
+def list_lessons(
+    module_id: int, db: Db, include_archived: bool = False
+) -> list[LessonResponse]:
     get(db, Module, module_id)
-    return [lesson_data(row) for row in rows(db, Lesson, module_id)]
+    return [lesson_data(row) for row in rows(db, Lesson, module_id, include_archived)]
 
 
 def create_lesson(module_id: int, data: LessonInput, db: Db) -> LessonResponse:
-    get(db, Module, module_id)
-    items = rows(db, Lesson, module_id)
+    require_active_module(db, module_id)
+    reject_archived_key(db, Lesson, data.key, module_id)
     values = data.model_dump()
     if values["video_url"] is not None:
         values["video_url"] = str(values["video_url"])
     row = Lesson(
         module_id=module_id,
         **values,
-        position=max((i.position for i in items), default=-1) + 1,
+        position=next_position(db, Lesson, module_id),
     )
     db.add(row)
     save(db)
@@ -194,7 +236,7 @@ def create_lesson(module_id: int, data: LessonInput, db: Db) -> LessonResponse:
 
 def order_lessons(module_id: int, data: Order, db: Db) -> OrderResponse:
     get(db, Module, module_id)
-    reorder(db, rows(db, Lesson, module_id), data.ids)
+    reorder(db, Lesson, module_id, data.ids)
     save(db)
     return OrderResponse(ids=data.ids)
 
@@ -212,15 +254,13 @@ def patch_lesson(lesson_id: int, data: LessonPatch, db: Db) -> LessonResponse:
     return lesson_data(row)
 
 
-def delete_lesson(lesson_id: int, db: Db):
-    row = get(db, Lesson, lesson_id)
-    module_id = row.module_id
-    db.delete(row)
-    db.flush()
-    items = rows(db, Lesson, module_id)
-    reorder(db, items, [i.id for i in items])
-    save(db)
+def archive_lesson(lesson_id: int, db: Db):
+    set_archived(db, Lesson, lesson_id, True)
     return Response(status_code=204)
+
+
+def restore_lesson(lesson_id: int, db: Db) -> LessonResponse:
+    return lesson_data(set_archived(db, Lesson, lesson_id, False))
 
 
 def replace_questions(db, quiz, data):
@@ -279,9 +319,15 @@ def replace_questions(db, quiz, data):
 
 
 def create_quiz(module_id: int, data: QuizInput, db: Db) -> QuizResponse:
-    get(db, Module, module_id)
-    if db.exec(select(Quiz).where(Quiz.module_id == module_id)).first():
-        raise HTTPException(409, "Module already has a quiz")
+    require_active_module(db, module_id)
+    existing = db.exec(select(Quiz).where(Quiz.module_id == module_id)).first()
+    if existing:
+        raise HTTPException(
+            409,
+            "Module has an archived quiz; restore it"
+            if existing.archived
+            else "Module already has a quiz",
+        )
     quiz = Quiz(module_id=module_id)
     db.add(quiz)
     db.flush()
@@ -290,10 +336,10 @@ def create_quiz(module_id: int, data: QuizInput, db: Db) -> QuizResponse:
     return quiz_data(db, quiz)
 
 
-def read_quiz(module_id: int, db: Db) -> QuizResponse:
+def read_quiz(module_id: int, db: Db, include_archived: bool = False) -> QuizResponse:
     get(db, Module, module_id)
     quiz = db.exec(select(Quiz).where(Quiz.module_id == module_id)).first()
-    if quiz is None:
+    if quiz is None or (quiz.archived and not include_archived):
         raise HTTPException(404, "Quiz not found")
     return quiz_data(db, quiz)
 
@@ -305,7 +351,10 @@ def update_quiz(quiz_id: int, data: QuizInput, db: Db) -> QuizResponse:
     return quiz_data(db, quiz)
 
 
-def delete_quiz(quiz_id: int, db: Db):
-    db.delete(get(db, Quiz, quiz_id))
-    save(db)
+def archive_quiz(quiz_id: int, db: Db):
+    set_archived(db, Quiz, quiz_id, True)
     return Response(status_code=204)
+
+
+def restore_quiz(quiz_id: int, db: Db) -> QuizResponse:
+    return quiz_data(db, set_archived(db, Quiz, quiz_id, False))

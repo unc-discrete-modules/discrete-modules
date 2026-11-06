@@ -105,8 +105,8 @@ uv run python -m src.seed           # load into DATABASE_URL
 
 - Re-running skips existing modules and their entire content trees. Database
   edits and database-only content remain untouched; new modules are appended.
-- Removing content here does not remove it from the database. A deleted module
-  still present here will be inserted again on the next seed run.
+- Removing content here does not remove it from the database. A module archived
+  through the admin API is not inserted again, even while it remains here.
 - The whole run is one transaction. If validation or the database fails,
   nothing is changed.
 - Validation reports every problem at once (missing files, unknown fields,

@@ -35,6 +35,10 @@ class Module(ModelBase, table=True):
     title: str = Field(max_length=200)
     description: str = Field(sa_type=Text)
     position: int = Field(unique=True)
+    archived: bool = Field(
+        default=False,
+        sa_column_kwargs={"server_default": false()},
+    )
 
     lessons: list["Lesson"] = Relationship(
         back_populates="module",
@@ -75,6 +79,10 @@ class Lesson(ModelBase, table=True):
     body: str = Field(sa_type=Text)
     video_url: str | None = Field(default=None, max_length=2048)
     position: int
+    archived: bool = Field(
+        default=False,
+        sa_column_kwargs={"server_default": false()},
+    )
 
     module: Module = Relationship(back_populates="lessons")
 
@@ -87,6 +95,10 @@ class Quiz(ModelBase, table=True):
         foreign_key="modules.id",
         ondelete="CASCADE",
         unique=True,
+    )
+    archived: bool = Field(
+        default=False,
+        sa_column_kwargs={"server_default": false()},
     )
 
     module: Module = Relationship(back_populates="quiz")
