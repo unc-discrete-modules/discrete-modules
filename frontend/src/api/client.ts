@@ -64,6 +64,14 @@ function isModule(value: unknown): value is Module {
   )
 }
 
+function isOrderResponse(value: unknown): value is { ids: number[] } {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.ids) &&
+    value.ids.every((id: unknown) => typeof id === 'number')
+  )
+}
+
 async function requestJson<T>(
   path: string,
   init: RequestInit,
@@ -130,6 +138,27 @@ export function listModules(signal?: AbortSignal): Promise<ModuleSummary[]> {
     { signal },
     (value): value is ModuleSummary[] =>
       Array.isArray(value) && value.every(isModuleSummary),
+  )
+}
+
+export function reorderModules(
+  ids: number[],
+  csrfToken: string,
+): Promise<{ ids: number[] }> {
+  return requestJson(
+    '/admin/modules/order',
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify({ ids }),
+    },
+    (value): value is { ids: number[] } =>
+      isOrderResponse(value) &&
+      value.ids.length === ids.length &&
+      value.ids.every((id, index) => id === ids[index]),
   )
 }
 
