@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SESSION_EXPIRED } from '@/api'
 import {
   ApiError,
+  deleteModule,
   getLesson,
   getModule,
   getQuiz,
@@ -116,6 +117,20 @@ describe('learning API client', () => {
           'X-CSRF-Token': 'csrf',
         },
         body: JSON.stringify({ ids: [2, 1] }),
+        credentials: 'same-origin',
+      }),
+    )
+  })
+
+  it('deletes a module with the authenticated admin endpoint', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetch)
+    await expect(deleteModule(12, 'csrf')).resolves.toBeUndefined()
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/modules/12',
+      expect.objectContaining({
+        method: 'DELETE',
+        headers: { 'X-CSRF-Token': 'csrf' },
         credentials: 'same-origin',
       }),
     )

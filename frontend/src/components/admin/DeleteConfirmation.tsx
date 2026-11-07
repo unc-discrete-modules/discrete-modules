@@ -14,6 +14,9 @@ type DeleteProps = {
   deleteType: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  onConfirm: () => void
+  confirming: boolean
+  error: string | null
   trigger: ReactElement
   anchor: RefObject<HTMLDivElement | null>
 }
@@ -22,6 +25,9 @@ export default function DeleteConfirmation({
   deleteType,
   open,
   onOpenChange,
+  onConfirm,
+  confirming,
+  error,
   trigger,
   anchor,
 }: DeleteProps) {
@@ -38,17 +44,29 @@ export default function DeleteConfirmation({
               This action cannot be undone.
             </PopoverDescription>
           </PopoverHeader>
+          {error && (
+            <p role="alert" className="text-sm text-red-700">
+              {error}
+            </p>
+          )}
           <div className="grid w-full grid-cols-2 gap-2">
             <Button
               variant="secondary"
               size="sm"
               onClick={() => onOpenChange(false)}
+              disabled={confirming}
               className="rounded-sm text-muted-navy"
             >
               Cancel
             </Button>
-            <Button variant="destructive" size="sm" className="rounded-sm">
-              Delete
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={onConfirm}
+              disabled={confirming}
+              className="rounded-sm"
+            >
+              {confirming ? 'Deleting...' : 'Delete'}
             </Button>
           </div>
         </div>

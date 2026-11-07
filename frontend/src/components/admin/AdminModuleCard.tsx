@@ -62,8 +62,10 @@ export default function AdminModuleCard({
         </Link>
 
         <CardContent className="grid grid-cols-2 items-center gap-3 py-4">
-          <EditButton />
-          <DeleteButton anchor={cardRef} />
+          <Link to={`/edit-module/${module.id}`}>
+            <EditButton />
+          </Link>
+          <DeleteButton moduleId={module.id} anchor={cardRef} />
         </CardContent>
       </Card>
     </div>

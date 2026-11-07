@@ -76,6 +76,7 @@ async function requestJson<T>(
   path: string,
   init: RequestInit,
   validate?: (value: unknown) => value is T,
+  expectNoContent = false,
 ): Promise<T> {
   let response: Response
   try {
@@ -90,6 +91,8 @@ async function requestJson<T>(
       'Unable to connect. Check your connection and try again.',
     )
   }
+
+  if (expectNoContent && response.status === 204) return undefined as T
 
   let value: unknown
   try {
@@ -121,6 +124,12 @@ async function requestJson<T>(
       response.status >= 500 ? fallback : body?.message || fallback,
       response.status,
       body,
+    )
+  }
+  if (expectNoContent) {
+    throw new ApiError(
+      'The server returned an invalid response. Please try again.',
+      response.status,
     )
   }
   if (validate && !validate(value)) {
@@ -159,6 +168,21 @@ export function reorderModules(
       isOrderResponse(value) &&
       value.ids.length === ids.length &&
       value.ids.every((id, index) => id === ids[index]),
+  )
+}
+
+export function deleteModule(
+  moduleId: number,
+  csrfToken: string,
+): Promise<void> {
+  return requestJson<void>(
+    `/admin/modules/${moduleId}`,
+    {
+      method: 'DELETE',
+      headers: { 'X-CSRF-Token': csrfToken },
+    },
+    undefined,
+    true,
   )
 }
 
