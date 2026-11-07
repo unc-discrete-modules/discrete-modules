@@ -1,4 +1,4 @@
-/** Button for module deletion. */
+/** Button for module, lesson, quiz deletion. Use with DeleteConfirmation. */
 
 import { Trash } from 'lucide-react'
 import { Button } from '../ui/button'

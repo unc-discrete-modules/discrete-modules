@@ -3,7 +3,7 @@
 import { ArrowDownUp } from 'lucide-react'
 import { Button } from '../ui/button'
 
-export default function CreateButton() {
+export default function ReorderButton() {
   return (
     <>
       <Button
