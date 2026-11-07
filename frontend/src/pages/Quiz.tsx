@@ -1,10 +1,10 @@
 import { useState, type SubmitEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { submitQuiz } from '@/api/quizzes'
+import { submitQuiz } from '@/api/client'
 import QuizFeedback from '@/components/quiz/QuizFeedback'
 import QuizQuestion from '@/components/quiz/QuizQuestion'
+import { ErrorState, LoadingState } from '@/components/RequestState'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/context/auth-context-value'
 import { useModule } from '@/hooks/use-modules'
 import { useQuiz } from '@/hooks/use-quiz'
@@ -35,26 +35,21 @@ export default function Quiz() {
   const [result, setResult] = useState<SubmissionResult | null>(null)
 
   if (!validModuleId) {
-    return <p className="p-6 text-lg">Quiz not found.</p>
+    return <ErrorState error={new Error('Quiz not found.')} />
   }
 
   if (loading) {
-    return <Skeleton className="m-6 h-32" />
+    return <LoadingState message="Loading quiz..." />
   }
 
   if (error || !quiz) {
     return (
-      <div className="p-6 text-lg">
-        <p>Unable to load this quiz.</p>
-        <Button type="button" className="mt-4" onClick={retry}>
-          Try again
-        </Button>
-      </div>
+      <ErrorState error={error ?? new Error('Quiz not found.')} retry={retry} />
     )
   }
 
   if (quiz.id !== Number(quizId)) {
-    return <p className="p-6 text-lg">Quiz not found.</p>
+    return <ErrorState error={new Error('Quiz not found.')} />
   }
 
   const unanswered = unansweredQuestions(quiz.questions, values)
@@ -77,8 +72,8 @@ export default function Quiz() {
       setResult(
         await submitQuiz(
           quiz.id,
-          buildAnswers(quiz.questions, values),
-          auth.user.csrf_token,
+          { answers: buildAnswers(quiz.questions, values) },
+          { csrfToken: auth.user.csrf_token },
         ),
       )
     } catch {

@@ -3,10 +3,12 @@ import time
 import zlib
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier, local
+from typing import Annotated
 from urllib.parse import parse_qs, urlencode, urlsplit
 from uuid import uuid4
 
 import pytest
+from fastapi import Depends
 from fastapi.testclient import TestClient
 from lxml import etree
 from onelogin.saml2.constants import OneLogin_Saml2_Constants as C
@@ -30,7 +32,10 @@ from src.models import (
 from src.services.auth import (
     SESSION_COOKIE,
     TRANSACTION_COOKIE,
+    AuthenticatedUser,
     establish_session,
+    require_admin,
+    require_progress_access,
     safe_return_to,
     token_hash,
 )
@@ -93,6 +98,15 @@ def client(db_session, auth_lesson, saml_settings, monkeypatch):
     monkeypatch.setattr("src.services.auth.get_engine", db_session.get_bind)
     app = create_app()
     app.state.settings = saml_settings
+
+    @app.get("/test/admin")
+    def admin(user: Annotated[AuthenticatedUser, Depends(require_admin)]):
+        return {"id": user.id, "role": user.role}
+
+    @app.api_route("/test/progress/{user_id}", methods=["GET", "POST"])
+    def progress(user: Annotated[AuthenticatedUser, Depends(require_progress_access)]):
+        return {"id": user.id, "role": user.role}
+
     app.dependency_overrides[get_db_session] = lambda: db_session
     with TestClient(app, base_url=ORIGIN, follow_redirects=False) as client:
         yield client
@@ -118,6 +132,92 @@ def authenticate(client, certificates, **kwargs):
         "/saml/acs", data={"SAMLResponse": value, "RelayState": relay}
     )
     return response, value, relay
+
+
+@pytest.mark.parametrize(
+    "allowlist,email,expected",
+    [
+        ([], "student@example.unc.edu", "student"),
+        (["other@example.unc.edu"], "student@example.unc.edu", "student"),
+        (["Student@example.unc.edu"], "student@example.unc.edu", "student"),
+        (["student@example.unc.edu"], "student@example.unc.edu", "admin"),
+    ],
+)
+def test_signed_login_roles(
+    client, certificates, monkeypatch, allowlist, email, expected
+):
+    monkeypatch.setattr(client.app.state.settings, "admin_emails", allowlist)
+    response, _, _ = authenticate(client, certificates, email=email)
+    assert response.headers["location"] == "/modules/1"
+    me = client.get("/api/auth/me").json()
+    assert set(me) == {"id", "email", "onyen", "display_name", "role", "csrf_token"}
+    assert me["role"] == expected
+    assert client.get(f"/test/progress/{me['id']}").json()["role"] == expected
+
+
+def test_guards_refresh_roles_and_enforce_csrf(
+    client, certificates, db_session, monkeypatch
+):
+    assert client.get("/test/admin").status_code == 401
+    authenticate(client, certificates)
+    me = client.get("/api/auth/me").json()
+    own = f"/test/progress/{me['id']}"
+    other = f"/test/progress/{me['id'] + 1}"
+    assert client.get("/test/admin").status_code == 403
+    assert client.get(own).json()["role"] == "student"
+    assert client.get(other).status_code == 403
+    monkeypatch.setattr(client.app.state.settings, "admin_emails", [me["email"]])
+    assert client.get("/test/admin").json()["role"] == "admin"
+    assert client.get(own).status_code == 200
+    assert client.get(other).status_code == 200
+    assert client.post(other).status_code == 403
+    headers = {"Origin": ORIGIN, "X-CSRF-Token": me["csrf_token"]}
+    assert client.post(other, headers=headers).status_code == 200
+    monkeypatch.setattr(client.app.state.settings, "admin_emails", [])
+    assert client.get("/test/admin").status_code == 403
+    db_session.expire_all()
+    assert db_session.get(User, me["id"]).role == "student"
+
+
+def test_demo_issuer_cannot_be_admin(client, db_session, monkeypatch):
+    monkeypatch.setattr(
+        client.app.state.settings, "admin_emails", ["demo@example.test"]
+    )
+    assert (
+        client.post("/api/auth/dev-login", headers={"Origin": ORIGIN}).status_code
+        == 204
+    )
+    me = client.get("/api/auth/me").json()
+    assert client.get("/test/admin").status_code == 403
+    db_session.expire_all()
+    assert db_session.get(User, me["id"]).role == "student"
+
+
+@pytest.mark.parametrize(
+    "email", ["", "no-at", "@domain", "name@", "a b@c", "a@@b", "x" * 320 + "@c"]
+)
+def test_invalid_admin_email_rejected(email):
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, admin_emails=[email])
+
+
+def test_admin_email_environment_trims_without_case_folding(monkeypatch):
+    monkeypatch.setenv("ADMIN_EMAILS", '["  Admin@unc.edu  "]')
+    assert Settings(_env_file=None).admin_emails == ["Admin@unc.edu"]
+
+
+def test_login_reconciles_existing_user_role(
+    client, certificates, db_session, monkeypatch
+):
+    email = f"{uuid4().hex}@example.unc.edu"
+    user = User(issuer=ISSUER, email=email, created_at=int(time.time()))
+    db_session.add(user)
+    db_session.flush()
+    monkeypatch.setattr(client.app.state.settings, "admin_emails", [email])
+    response, _, _ = authenticate(client, certificates, email=email)
+    assert response.headers["location"] == "/modules/1"
+    db_session.refresh(user)
+    assert user.role == "admin"
 
 
 def test_signed_request_and_metadata(client, certificates):
@@ -388,6 +488,75 @@ def test_explicit_email_attribute(saml_settings, certificates):
         SamlService(saml_settings).validate({"SAMLResponse": value}, "_request")
 
 
+ONYEN_ATTRIBUTE = "urn:oid:1.3.6.1.4.1.5923.1.1.1.6"
+NAME_ATTRIBUTE = "urn:oid:2.16.840.1.113730.3.1.241"
+
+
+def with_profile(**attributes):
+    def add(root):
+        statement = root.find(".//saml:AttributeStatement", C.NSMAP)
+        for name, values in attributes.items():
+            attribute = etree.SubElement(
+                statement, f"{{{C.NS_SAML}}}Attribute", Name=name
+            )
+            for value in values:
+                etree.SubElement(
+                    attribute, f"{{{C.NS_SAML}}}AttributeValue"
+                ).text = value
+
+    return add
+
+
+@pytest.mark.parametrize(
+    "attributes,expected",
+    [
+        (
+            {ONYEN_ATTRIBUTE: ["  sstudent "], NAME_ATTRIBUTE: ["Sam Student"]},
+            ("sstudent", "Sam Student"),
+        ),
+        ({ONYEN_ATTRIBUTE: ["a", "b"], NAME_ATTRIBUTE: [" "]}, (None, None)),
+        ({ONYEN_ATTRIBUTE: ["x" * 256]}, (None, None)),
+        ({}, (None, None)),
+    ],
+)
+def test_optional_profile_attributes(saml_settings, certificates, attributes, expected):
+    saml_settings.saml_onyen_attribute = ONYEN_ATTRIBUTE
+    saml_settings.saml_display_name_attribute = NAME_ATTRIBUTE
+    value = saml_response(
+        *certificates[:2], "_request", mutate=with_profile(**attributes)
+    )
+    identity = SamlService(saml_settings).validate({"SAMLResponse": value}, "_request")
+    assert (identity.onyen, identity.display_name) == expected
+
+
+def test_profile_attributes_ignored_when_unmapped(saml_settings, certificates):
+    value = saml_response(
+        *certificates[:2], "_request", mutate=with_profile(**{ONYEN_ATTRIBUTE: ["x"]})
+    )
+    identity = SamlService(saml_settings).validate({"SAMLResponse": value}, "_request")
+    assert (identity.onyen, identity.display_name) == (None, None)
+
+
+def test_me_returns_profile_and_refreshes_it_on_login(client, certificates):
+    settings = client.app.state.settings
+    settings.saml_onyen_attribute = ONYEN_ATTRIBUTE
+    settings.saml_display_name_attribute = NAME_ATTRIBUTE
+    authenticate(
+        client,
+        certificates,
+        mutate=with_profile(**{ONYEN_ATTRIBUTE: ["sstudent"], NAME_ATTRIBUTE: ["Sam"]}),
+    )
+    me = client.get("/api/auth/me").json()
+    assert (me["onyen"], me["display_name"], me["role"]) == (
+        "sstudent",
+        "Sam",
+        "student",
+    )
+    authenticate(client, certificates)
+    me = client.get("/api/auth/me").json()
+    assert (me["onyen"], me["display_name"]) == (None, None)
+
+
 def test_unconfigured_mapping_fails_closed(client):
     client.app.state.settings.saml_email_source = None
     assert client.get("/api/auth/login").status_code == 503
@@ -529,7 +698,9 @@ def test_concurrent_user_provisioning_reuses_identity(db_session):
             identity = SamlIdentity(
                 email, f"r-{identifier}-{i}", f"a-{identifier}-{i}", now + 300, None
             )
-            return establish_session(db, transaction, identity, None)[0]
+            return establish_session(
+                db, transaction, identity, None, Settings(_env_file=None)
+            )[0]
 
     event.listen(engine, "after_cursor_execute", synchronize_select)
     try:
@@ -650,6 +821,9 @@ def test_dev_login_creates_normal_session_without_saml(
     me = dev_client.get("/api/auth/me")
     assert me.status_code == 200
     assert me.json()["email"] == "demo@example.test"
+    assert me.json()["onyen"] == "demo"
+    assert me.json()["display_name"] == "Demo User"
+    assert me.json()["role"] == "student"
     assert dev_client.get(f"/api/lessons/{auth_lesson.id}").status_code == 200
     user = db_session.get(User, me.json()["id"])
     assert user.issuer == "urn:discrete-modules:development"
@@ -725,3 +899,23 @@ def test_demo_sessions_work_in_production(dev_client):
     dev_client.post("/api/auth/dev-login", headers={"Origin": "http://localhost:5173"})
     dev_client.app.state.settings.environment = "production"
     assert dev_client.get("/api/auth/me").status_code == 200
+
+
+def test_demo_admin_has_admin_access_only_in_development(dev_client, db_session):
+    response = dev_client.post(
+        "/api/auth/dev-login?admin=true", headers={"Origin": "http://localhost:5173"}
+    )
+    assert response.status_code == 204
+    me = dev_client.get("/api/auth/me").json()
+    assert me["email"] == "admin-demo@example.test"
+    assert dev_client.get("/api/admin/modules").status_code == 200
+    assert dev_client.get("/test/admin").json()["role"] == "admin"
+    dev_client.app.state.settings.environment = "production"
+    assert dev_client.get("/api/admin/modules").status_code == 403
+    assert db_session.get(User, me["id"]).role == "student"
+
+
+def test_demo_admin_login_rejected_in_production(client):
+    response = client.post("/api/auth/dev-login?admin=true", headers={"Origin": ORIGIN})
+    assert response.status_code == 404
+    assert client.get("/api/auth/me").status_code == 401

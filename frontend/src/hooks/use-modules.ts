@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from 'react'
 import { CourseContext } from '@/context/course-context-value'
-import { fetchModule } from '@/api/modules'
+import { getModule } from '@/api/client'
 import type { Module } from '@/types/types'
 
 export function useModules() {
@@ -25,9 +25,11 @@ export function useModule(moduleId: number, enabled = true) {
 
     const controller = new AbortController()
 
-    fetchModule(moduleId, controller.signal)
+    getModule(moduleId, controller.signal)
       .then((value) => {
-        setResult({ moduleId, attempt, module: value, error: null })
+        if (!controller.signal.aborted) {
+          setResult({ moduleId, attempt, module: value, error: null })
+        }
       })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {

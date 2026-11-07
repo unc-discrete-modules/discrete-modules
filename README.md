@@ -40,9 +40,15 @@ Run migrations from the backend service:
 docker compose exec backend uv run alembic upgrade head
 ```
 
-The project includes Alembic migrations. Database seed data will be added with
-the database-content work.
+`docker compose up` runs the migrations and loads `content/` through the `seed`
+service. New modules can be loaded with `docker compose run --rm seed`; existing modules are managed in the database.
 
+If you previously ran the local stack with PostgreSQL 17, reset the local
+database volume before starting PostgreSQL 16:
+
+```sh
+docker compose down --volumes
+docker compose up -d --build
 ### Tests and checks
 
 ```sh

@@ -22,6 +22,7 @@ spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
+      restartPolicy: Always
       initContainers:
         - name: migrate
           image: ghcr.io/1drturtle/discrete-modules-backend:latest
@@ -36,6 +37,35 @@ spec:
                 secretKeyRef:
                   name: database-credentials
                   key: DATABASE_URL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+        - name: seed
+          image: ghcr.io/1drturtle/discrete-modules-backend:latest
+          imagePullPolicy: Always
+          command:
+            - python
+            - -m
+            - src.seed
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-credentials
+                  key: DATABASE_URL
+          envFrom:
+            - configMapRef:
+                name: app-config
           resources:
             requests:
               cpu: 100m

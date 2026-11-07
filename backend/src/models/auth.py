@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, UniqueConstraint
+from sqlalchemy import BigInteger, CheckConstraint, UniqueConstraint
 from sqlmodel import Field
 
 from src.models.core import ModelBase
@@ -8,11 +8,17 @@ class User(ModelBase, table=True):
     __tablename__ = "users"
     __table_args__ = (
         UniqueConstraint("issuer", "email", name="uq_users_issuer_email"),
+        CheckConstraint("role IN ('student', 'admin')", name="ck_users_role"),
     )
 
     id: int | None = Field(default=None, primary_key=True)
     issuer: str = Field(max_length=255)
     email: str = Field(max_length=320)
+    onyen: str | None = Field(default=None, max_length=255)
+    display_name: str | None = Field(default=None, max_length=255)
+    role: str = Field(
+        default="student", max_length=7, sa_column_kwargs={"server_default": "student"}
+    )
     created_at: int = Field(sa_type=BigInteger)
 
 

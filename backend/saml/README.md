@@ -28,6 +28,9 @@ Apply the database migrations before using authentication. Configure:
 | `SAML_SP_PRIVATE_KEY_PATH` | `/var/run/saml/sp.key` |
 | `SAML_EMAIL_SOURCE` | `nameid` or `attribute`, after confirming release |
 | `SAML_EMAIL_ATTRIBUTE` | Exact SAML Attribute Name, required for `attribute` |
+| `SAML_ONYEN_ATTRIBUTE` | Optional exact Attribute Name carrying the Onyen |
+| `SAML_DISPLAY_NAME_ATTRIBUTE` | Optional exact Attribute Name carrying the display name |
+| `ADMIN_EMAILS` | JSON array of full UNC email addresses; defaults to `[]` |
 
 The email source deliberately has no default. Requested email release does not
 establish its location in an assertion. Use `nameid` only if UNC returns a NameID
@@ -40,6 +43,24 @@ Users are keyed by UNC issuer and the email provided by UNC, with surrounding
 whitespace removed and case preserved. A changed email creates a separate
 account. Any account consolidation must be deliberate, especially when saved
 progress is added later.
+
+## Authorization
+
+`ADMIN_EMAILS` contains full email addresses, not Onyens. Surrounding whitespace
+is trimmed, but matching is exact and case-sensitive against the validated UNC
+email. Invalid entries prevent startup. An empty list grants no administrator
+access, and the demo issuer is always a student even if its email is listed.
+Existing users default to `student` on migration. Roles are reconciled at login
+and on the next authenticated request, so allowlist additions and removals apply
+to existing sessions after the updated settings are deployed.
+
+`require_admin` depends on `require_user` and returns 403 for students.
+`require_progress_access` depends on `require_user` and permits administrators
+or the user whose ID matches the route's `{user_id}`; it returns 403 otherwise.
+Future admin and progress routes must explicitly attach the appropriate guard
+(including the routes planned in #61, #63, and #72). Both guards retain session,
+origin, and CSRF checks from `require_user`. `/api/auth/me` returns the role as a
+hint for the UI; authorization is always enforced by these guards.
 
 Mount the SP key and certificate through an OpenShift Secret; never put them
 in an image or source control. The public SP certificate is published through
@@ -54,7 +75,10 @@ from the site's TLS certificate.
 - `GET /api/auth/login?return_to=/modules/1` starts a ten-minute login transaction.
 - `POST /saml/acs` validates a response and redirects to its saved local path.
 - `GET /api/auth/metadata` returns signed SP metadata.
-- `GET /api/auth/me` returns `{id, email, csrf_token}` or a JSON 401.
+- `GET /api/auth/me` returns `{id, email, onyen, display_name, role, csrf_token}`
+  or a JSON 401. `onyen` and `display_name` are null unless the matching
+  `SAML_*_ATTRIBUTE` is configured and UNC releases a single value; they refresh
+  at each login.
 - `POST /api/auth/logout` requires the session's `X-CSRF-Token` header and an
   `Origin` equal to `PUBLIC_ORIGIN`; it returns 204 and revokes the session.
 

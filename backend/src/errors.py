@@ -9,6 +9,7 @@ ERROR_CODES = {
     401: "unauthorized",
     403: "forbidden",
     404: "not_found",
+    409: "conflict",
     422: "validation_error",
     500: "internal_error",
     503: "service_unavailable",
@@ -18,6 +19,18 @@ NOT_FOUND = {404: {"model": ErrorResponse, "description": "Resource not found"}}
 INVALID = {422: {"model": ErrorResponse, "description": "Invalid request"}}
 UNAVAILABLE = {503: {"model": ErrorResponse, "description": "Database unreachable"}}
 UNAUTHORIZED = {401: {"model": ErrorResponse, "description": "Authentication required"}}
+FORBIDDEN = {
+    403: {
+        "model": ErrorResponse,
+        "description": "Admin access or CSRF validation failed",
+    }
+}
+CONFLICT = {
+    409: {
+        "model": ErrorResponse,
+        "description": "Content conflicts with an existing record",
+    }
+}
 
 
 def _response(status_code: int, body: ErrorBody) -> JSONResponse:

@@ -15,6 +15,26 @@ services:
     depends_on:
       - backend
 
+  # Applies migrations and loads content/ before the API starts, mirroring the
+  # production init containers. It must finish first because both services share
+  # the virtualenv volume.
+  seed:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: development
+    command: sh -c "uv run alembic upgrade head && uv run python -m src.seed"
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-discrete_modules}:${POSTGRES_PASSWORD:-discrete_modules}@postgres:5432/${POSTGRES_DB:-discrete_modules}
+    volumes:
+      - ./backend:/app
+      - ./content:/content:ro
+      - backend_venv:/app/.venv
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   backend:
     build:
       context: .
@@ -24,6 +44,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-discrete_modules}:${POSTGRES_PASSWORD:-discrete_modules}@postgres:5432/${POSTGRES_DB:-discrete_modules}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-["http://localhost:5173"]}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-[]}
       ENVIRONMENT: development
       PUBLIC_ORIGIN: http://localhost:5173
       AUTH_COOKIE_SECURE: "false"
@@ -38,11 +59,11 @@ services:
       - ./content:/content:ro
       - backend_venv:/app/.venv
     depends_on:
-      postgres:
-        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
 
   postgres:
-    image: postgres:17-alpine
+    image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-discrete_modules}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-discrete_modules}

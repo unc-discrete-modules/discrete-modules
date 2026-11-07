@@ -7,12 +7,13 @@ from posixpath import normpath
 from typing import Annotated
 from urllib.parse import unquote, urlsplit
 
-from fastapi import HTTPException, Request, Security
+from fastapi import Depends, Header, HTTPException, Request, Security
 from fastapi.security import APIKeyCookie
 from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlmodel import Session, select
 
+from src.config import Settings
 from src.database import get_engine
 from src.models import AuthSession, LoginTransaction, SamlReplay, User
 from src.services.saml import ISSUER, SamlIdentity
@@ -23,6 +24,7 @@ LOGIN_TTL = 600
 SESSION_TTL = 8 * 60 * 60
 DEV_ISSUER = "urn:discrete-modules:development"
 DEV_EMAIL = "demo@example.test"
+DEV_ADMIN_EMAIL = "admin-demo@example.test"
 session_cookie = APIKeyCookie(
     name=SESSION_COOKIE, scheme_name="SessionCookie", auto_error=False
 )
@@ -56,12 +58,23 @@ def safe_return_to(value: str) -> str:
 class AuthenticatedUser:
     id: int
     email: str
+    role: str
     csrf_token: str
     token_hash: str
+    onyen: str | None = None
+    display_name: str | None = None
 
 
 def require_user(
-    request: Request, token: Annotated[str | None, Security(session_cookie)]
+    request: Request,
+    token: Annotated[str | None, Security(session_cookie)],
+    csrf_token: Annotated[
+        str | None,
+        Header(
+            alias="X-CSRF-Token",
+            description="Required for write requests. Get the token from GET /api/auth/me.",
+        ),
+    ] = None,
 ) -> AuthenticatedUser:
     if not token or len(token) > 128:
         raise HTTPException(401, "Authentication required")
@@ -74,7 +87,7 @@ def require_user(
             if not user:
                 raise HTTPException(401, "Authentication required")
             if request.method not in ("GET", "HEAD", "OPTIONS"):
-                csrf = request.headers.get("X-CSRF-Token", "")
+                csrf = csrf_token or ""
                 if (
                     request.headers.get("origin")
                     != request.app.state.settings.public_origin
@@ -83,11 +96,42 @@ def require_user(
                     )
                 ):
                     raise HTTPException(403, "Invalid CSRF token or origin")
+            previous_role = user.role
+            reconcile_role(user, request.app.state.settings)
+            if user.role != previous_role:
+                db.commit()
             return AuthenticatedUser(
-                user.id, user.email, session.csrf_token, session.token_hash
+                user.id,
+                user.email,
+                user.role,
+                session.csrf_token,
+                session.token_hash,
+                user.onyen,
+                user.display_name,
             )
     except (SQLAlchemyError, RuntimeError) as exc:
         raise HTTPException(503, "Authentication service unavailable") from exc
+
+
+def require_admin(
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
+) -> AuthenticatedUser:
+    if user.role != "admin":
+        raise HTTPException(403, "Admin access required")
+    return user
+
+
+def require_progress_access(
+    user_id: int, user: Annotated[AuthenticatedUser, Depends(require_user)]
+) -> AuthenticatedUser:
+    """Guard routes whose {user_id} path parameter identifies the progress owner.
+
+    Without that path parameter FastAPI accepts user_id from the query string,
+    which must not be used to authorize access to a different user's progress.
+    """
+    if user.id != user_id and user.role != "admin":
+        raise HTTPException(403, "Progress access denied")
+    return user
 
 
 def cleanup_expired(db: Session, now: int) -> None:
@@ -118,6 +162,19 @@ def get_or_create_user(db: Session, issuer: str, email: str) -> User:
     return user
 
 
+def reconcile_role(user: User, settings: Settings) -> None:
+    user.role = (
+        "admin"
+        if (user.issuer == ISSUER and user.email in settings.admin_emails)
+        or (
+            settings.environment == "development"
+            and user.issuer == DEV_ISSUER
+            and user.email == DEV_ADMIN_EMAIL
+        )
+        else "student"
+    )
+
+
 def create_session(
     db: Session, user: User, expires_at: int, previous_hashes: set[str]
 ) -> str:
@@ -140,6 +197,7 @@ def establish_session(
     transaction: LoginTransaction,
     identity: SamlIdentity,
     old_token: str | None,
+    settings: Settings,
 ) -> tuple[str, int]:
     now = int(time.time())
     expires_at = min(
@@ -157,6 +215,9 @@ def establish_session(
         )
     db.flush()
     user = get_or_create_user(db, ISSUER, identity.email)
+    reconcile_role(user, settings)
+    user.onyen = identity.onyen
+    user.display_name = identity.display_name
     previous_hashes = set()
     if transaction.previous_session_hash:
         previous_hashes.add(transaction.previous_session_hash)

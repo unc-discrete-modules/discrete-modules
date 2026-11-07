@@ -22,7 +22,14 @@ def create_app() -> FastAPI:
     async def prevent_private_caching(request: Request, call_next):
         response = await call_next(request)
         if request.url.path.startswith(
-            ("/api/auth", "/api/modules", "/api/lessons", "/api/quizzes", "/saml/acs")
+            (
+                "/api/admin",
+                "/api/auth",
+                "/api/modules",
+                "/api/lessons",
+                "/api/quizzes",
+                "/saml/acs",
+            )
         ):
             response.headers["Cache-Control"] = "no-store"
         return response
@@ -30,7 +37,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
-        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "X-CSRF-Token"],
     )
     app.include_router(root.router)

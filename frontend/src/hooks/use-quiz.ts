@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchModuleQuiz } from '@/api/quizzes'
+import { getQuiz } from '@/api/client'
 import type { Quiz } from '@/types/types'
 
 type QuizResult = {
@@ -18,7 +18,7 @@ export function useQuiz(moduleId: number, enabled = true) {
 
     const controller = new AbortController()
 
-    fetchModuleQuiz(moduleId, controller.signal)
+    getQuiz(moduleId, controller.signal)
       .then((quiz) => {
         setResult({ moduleId, attempt, quiz, error: null })
       })
