@@ -5,7 +5,9 @@
 @import '@fontsource-variable/outfit';
 
 .lesson-content mjx-container:not([display='true']),
-.lesson-content mjx-container:not([display='true']) svg {
+.lesson-content mjx-container:not([display='true']) svg,
+.math-text mjx-container:not([display='true']),
+.math-text mjx-container:not([display='true']) svg {
   display: inline-block;
   vertical-align: middle;
 }

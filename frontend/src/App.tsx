@@ -2,15 +2,12 @@ import { BrowserRouter, Outlet, Route, Routes } from 'react-router-dom'
 import Home from './pages/Home'
 import Lesson from './pages/Lesson'
 import Module from './pages/Module'
+import Quiz from './pages/Quiz'
 import Layout from './components/Layout'
 import { CourseProvider } from './context/course-context'
 import { AuthProvider } from './context/auth-context'
 import RequireAuth from './components/RequireAuth'
 import Login from './pages/Login'
-
-function Quiz() {
-  return <h1>Quiz View</h1>
-}
 
 function LearningLayout() {
   return (
@@ -40,7 +37,6 @@ function App() {
                     path="/modules/:moduleId/quiz/:quizId"
                     element={<Quiz />}
                   />
-                  <Route path="/modules/:moduleId/summary" element={<Quiz />} />
                 </Route>
               </Route>
             </Route>

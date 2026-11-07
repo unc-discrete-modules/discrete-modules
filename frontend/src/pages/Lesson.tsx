@@ -30,13 +30,16 @@ export default function Lesson() {
   }
 
   const { objectives, body } = splitLessonSections(lesson.body)
+  const position = module?.lessons.findIndex((item) => item.id === lesson.id)
+  const lessonNumber =
+    position === undefined || position < 0 ? undefined : position + 1
 
   return (
     <main className="max-w-4xl px-12 py-10">
       <LessonHeader
         title={lesson.title}
         moduleId={moduleId}
-        lessonId={lessonId}
+        lessonNumber={lessonNumber}
         objectives={objectives}
       />
       <LessonVideo videoUrl={lesson.video_url} title={lesson.title} />
