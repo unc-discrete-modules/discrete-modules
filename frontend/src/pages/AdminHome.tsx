@@ -3,7 +3,7 @@
  * */
 
 import AdminModuleCard from '@/components/admin/AdminModuleCard'
-import CreateButton from '@/components/admin/CreateButton'
+import { ModuleCreationDialog } from '@/components/admin/ModuleCreationDialog'
 import ReorderButton from '@/components/admin/ReorderButton'
 import SwitchViewButton from '@/components/admin/SwitchViewButton'
 import { LoadingState, ErrorState } from '@/components/RequestState'
@@ -18,14 +18,12 @@ export default function AdminHome() {
     <>
       <div className="mx-10">
         <div className="flex justify-between items-start py-5">
-          <h1 className="text-3xl font-bold text-muted-navy">
-            Welcome back, AdminUsername
-          </h1>
+          <h1 className="text-3xl font-bold text-muted-navy">Create Module</h1>
           <SwitchViewButton viewType="Student"></SwitchViewButton>
         </div>
 
         <div className="flex gap-x-[3%] pb-5">
-          <CreateButton />
+          <ModuleCreationDialog />
           <ReorderButton />
         </div>
 

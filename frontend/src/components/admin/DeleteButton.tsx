@@ -18,7 +18,7 @@ export default function DeleteButton({ anchor }: DeleteButtonProps) {
       onOpenChange={setOpen}
       anchor={anchor}
       trigger={
-        <Button className="w-full rounded-md bg-delete-red font-bold drop-shadow-sm drop-shadow-muted-navy/25 transition ease-in-out hover:bg-delete-red hover:saturate-120 hover:scale-102">
+        <Button className="w-full truncate rounded-md bg-delete-red font-bold drop-shadow-sm drop-shadow-muted-navy/25 transition ease-in-out hover:bg-delete-red hover:saturate-120 hover:scale-102">
           Delete
           <Trash />
         </Button>
