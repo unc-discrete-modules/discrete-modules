@@ -121,18 +121,20 @@ export default function Quiz() {
         Module {moduleId} Quiz
       </h1>
       <form noValidate onSubmit={handleSubmit} className="mt-8 space-y-12">
-        {quiz.questions.map((question, index) => (
-          <QuizQuestion
-            key={question.id}
-            question={question}
-            number={index + 1}
-            value={values[question.id] ?? ''}
-            invalid={attemptedSubmit && !isAnswered(values[question.id])}
-            onChange={(value) =>
-              setValues((current) => ({ ...current, [question.id]: value }))
-            }
-          />
-        ))}
+        <fieldset disabled={submitting} className="space-y-12">
+          {quiz.questions.map((question, index) => (
+            <QuizQuestion
+              key={question.id}
+              question={question}
+              number={index + 1}
+              value={values[question.id] ?? ''}
+              invalid={attemptedSubmit && !isAnswered(values[question.id])}
+              onChange={(value) =>
+                setValues((current) => ({ ...current, [question.id]: value }))
+              }
+            />
+          ))}
+        </fieldset>
         {attemptedSubmit && unansweredIds.size > 0 ? (
           <p role="alert" className="text-base text-destructive">
             Answer every question before submitting. Unanswered:{' '}
