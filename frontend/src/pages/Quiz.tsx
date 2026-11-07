@@ -18,6 +18,11 @@ import type { SubmissionResult } from '@/types/types'
 
 export default function Quiz() {
   const { moduleId, quizId } = useParams()
+  return <QuizAttempt key={`${moduleId}/${quizId}`} />
+}
+
+function QuizAttempt() {
+  const { moduleId, quizId } = useParams()
   const navigate = useNavigate()
   const { state: auth } = useAuth()
   const numericModuleId = Number(moduleId)
