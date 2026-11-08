@@ -13,6 +13,9 @@ export type Answer = SubmissionRequest['answers'][number]
 export type SubmissionResult = Schemas['SubmissionResult']
 export type QuestionResult = Schemas['QuestionResult']
 export type ErrorResponse = Schemas['ErrorResponse']
+export type MultipleChoiceQuestion = Schemas['MultipleChoiceQuestion']
+export type FillInBlankQuestion = Schemas['FillInBlankQuestion']
+export type FreeResponseQuestion = Schemas['FreeResponseQuestion']
 
 export type CourseContextValue = {
   modules: ModuleSummary[] | null
