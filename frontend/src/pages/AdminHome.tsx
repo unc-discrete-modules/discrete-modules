@@ -29,27 +29,52 @@ export default function AdminHome() {
       return module ? [module] : []
     })
     const orderedIds = new Set(moduleOrder)
-    return [...ordered, ...modules.filter((module) => !orderedIds.has(module.id))]
+    return [
+      ...ordered,
+      ...modules.filter((module) => !orderedIds.has(module.id)),
+    ]
   }, [modules, moduleOrder])
 
   function handleDragEnd(event: DragEndEvent) {
     if (event.canceled) return
-    const sourceId = event.operation.source?.id
+    const source = event.operation.source
+    const sourceId = source?.id
     const targetId = event.operation.target?.id
-    if (typeof sourceId !== 'number' || typeof targetId !== 'number') return
+    if (
+      typeof sourceId !== 'number' ||
+      !source ||
+      !('index' in source) ||
+      typeof source.index !== 'number'
+    ) {
+      return
+    }
 
     const fromIndex = orderedModules.findIndex(
       (module) => module.id === sourceId,
     )
-    const toIndex = orderedModules.findIndex(
-      (module) => module.id === targetId,
-    )
-    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return
+    const toIndex = source.index
+    console.log('Drag end positions:', {
+      sourceId,
+      targetId,
+      fromIndex,
+      toIndex,
+      moduleIds: orderedModules.map((module) => module.id),
+    })
+    if (
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      toIndex >= orderedModules.length ||
+      fromIndex === toIndex
+    ) {
+      // console.log('Drag ended without a reorder:', { fromIndex, toIndex })
+      return
+    }
 
     const next = [...orderedModules]
     const [moved] = next.splice(fromIndex, 1)
     next.splice(toIndex, 0, moved)
-    setModuleOrder(next.map((module) => module.id))
+    const nextOrder = next.map((module) => module.id)
+    setModuleOrder(nextOrder)
   }
 
   async function handleReorderClick() {
