@@ -32,9 +32,12 @@ def test_models_register_expected_tables_and_relationships():
 
     assert set(ModelBase.metadata.tables) == {
         "answer_options",
+        "lesson_completions",
         "lessons",
         "modules",
+        "question_responses",
         "questions",
+        "quiz_attempts",
         "quizzes",
         "users",
         "auth_sessions",

@@ -4,23 +4,28 @@ import { rehypePlugins, remarkPlugins, tableComponents } from './markdown'
 type LessonHeaderProps = {
   title: string
   moduleId?: string
-  lessonId?: string
+  // Position within the module; unknown until the module's lessons load.
+  lessonNumber?: number
   objectives: string
 }
 
 export default function LessonHeader({
   title,
   moduleId,
-  lessonId,
+  lessonNumber,
   objectives,
 }: LessonHeaderProps) {
+  const lessonLabel = lessonNumber == null ? null : `Lesson ${lessonNumber}`
+
   return (
     <header>
       <h1 className="text-4xl font-semibold text-slate-700">
-        Module {moduleId}: Lesson {lessonId} - {title}
+        Module {moduleId}: {lessonLabel ? `${lessonLabel} - ` : ''}
+        {title}
       </h1>
       <p className="mt-4 text-m text-slate-500">
-        Dashboard / Module {moduleId} / Lesson {lessonId}
+        Dashboard / Module {moduleId}
+        {lessonLabel ? ` / ${lessonLabel}` : ''}
       </p>
       <h2 className="mt-4 text-xl font-semibold text-slate-700">Overview</h2>
       {objectives ? (

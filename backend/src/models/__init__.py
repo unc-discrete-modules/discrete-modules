@@ -10,17 +10,21 @@ from src.models.content import (
     Quiz,
 )
 from src.models.core import ModelBase
+from src.models.progress import LessonCompletion, QuestionResponse, QuizAttempt
 
 __all__ = [
     "AnswerOption",
     "AuthSession",
     "Lesson",
+    "LessonCompletion",
     "LoginTransaction",
     "ModelBase",
     "Module",
     "Question",
+    "QuestionResponse",
     "QuestionType",
     "Quiz",
+    "QuizAttempt",
     "SamlReplay",
     "User",
 ]

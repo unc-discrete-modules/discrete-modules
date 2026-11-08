@@ -87,6 +87,8 @@ class SamlIdentity:
     assertion_id: str
     assertion_expires_at: int
     session_expires_at: int | None
+    onyen: str | None = None
+    display_name: str | None = None
 
 
 class SamlService:
@@ -173,6 +175,16 @@ class SamlService:
             raise SamlConfigurationError("Invalid SP metadata")
         return metadata
 
+    @staticmethod
+    def optional_attribute(auth: OneLogin_Saml2_Auth, name: str | None) -> str | None:
+        # Profile details only decorate the account, so an absent or ambiguous
+        # release must not block sign-in.
+        values = (auth.get_attribute(name) if name else None) or []
+        if len(values) != 1 or not isinstance(values[0], str):
+            return None
+        value = values[0].strip()
+        return value if 0 < len(value) <= 255 else None
+
     def validate(self, post_data: dict[str, str], request_id: str) -> SamlIdentity:
         try:
             auth = self.auth(post_data)
@@ -207,6 +219,10 @@ class SamlService:
                 assertion_id,
                 int(expiry),
                 auth.get_session_expiration(),
+                self.optional_attribute(auth, self.settings.saml_onyen_attribute),
+                self.optional_attribute(
+                    auth, self.settings.saml_display_name_attribute
+                ),
             )
         except SamlConfigurationError:
             raise
