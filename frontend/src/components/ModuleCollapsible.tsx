@@ -66,7 +66,7 @@ export default function ModuleCollapsible({
                 <ErrorState error={lessonsError} retry={retry} />
               </li>
             )}
-            {details?.lessons.map((lesson) => (
+            {details?.lessons.map((lesson, index) => (
               <SidebarMenuSubItem key={lesson.id} className="list-none">
                 <SidebarMenuSubButton
                   render={
@@ -76,7 +76,7 @@ export default function ModuleCollapsible({
                   className="h-7 w-full items-center overflow-hidden rounded-none whitespace-nowrap pl-8"
                 >
                   <span className="min-w-0 flex-1 truncate">
-                    {lesson.id}. {lesson.title}
+                    {index + 1}. {lesson.title}
                   </span>
                 </SidebarMenuSubButton>
               </SidebarMenuSubItem>

@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     saml_sp_private_key_path: Path | None = None
     saml_email_source: Literal["nameid", "attribute"] | None = None
     saml_email_attribute: str | None = None
+    saml_onyen_attribute: str | None = None
+    saml_display_name_attribute: str | None = None
 
     @model_validator(mode="after")
     def validate_auth_configuration(self) -> "Settings":

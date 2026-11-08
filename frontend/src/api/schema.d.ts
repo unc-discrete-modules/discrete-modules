@@ -384,7 +384,26 @@ export interface components {
             id: number;
             /** Email */
             email: string;
-            /** Csrf Token */
+            /**
+             * Onyen
+             * @description UNC Onyen; null until released by UNC at the user's next login.
+             */
+            onyen: string | null;
+            /**
+             * Display Name
+             * @description Name to show in the UI; null until released by UNC.
+             */
+            display_name: string | null;
+            /**
+             * Role
+             * @description Hint for the UI; the server enforces access on every request.
+             * @enum {string}
+             */
+            role: "student" | "admin";
+            /**
+             * Csrf Token
+             * @description Send as X-CSRF-Token on write requests.
+             */
             csrf_token: string;
         };
         /** ErrorBody */
