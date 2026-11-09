@@ -17,7 +17,7 @@ import { useAuth } from '@/context/auth-context-value'
 import { useModules } from '@/hooks/use-modules'
 import CreateButton from './CreateButton'
 
-const DEFAULT_DESCRIPTION = 'Enter description...'
+const DEFAULT_DESCRIPTION = 'Default description.'
 
 export function ModuleCreationDialog() {
   const [nameInvalid, setNameInvalid] = useState(false)
@@ -129,7 +129,8 @@ export function ModuleCreationDialog() {
               <Input
                 id="description"
                 name="description"
-                placeholder={DEFAULT_DESCRIPTION}
+                defaultValue={DEFAULT_DESCRIPTION}
+                placeholder="Enter description..."
                 className="rounded-sm border-2 border-stone-200 bg-white aria-invalid:border-stone-200 aria-invalid:ring-0"
                 aria-invalid={descriptionInvalid}
                 aria-describedby={
