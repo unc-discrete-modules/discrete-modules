@@ -1,12 +1,13 @@
 import hmac
+import html
 import logging
 import secrets
 import time
 from typing import Annotated, Literal
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -117,13 +118,13 @@ def login(request: Request, saml: Saml, db: Db, return_to: str = "/"):
     relay = secrets.token_urlsafe(32)
     browser = secrets.token_urlsafe(32)
     try:
-        url, request_id = saml.login(relay)
+        login_request = saml.login(relay)
         now = int(time.time())
         cleanup_expired(db, now)
         db.add(
             LoginTransaction(
                 relay_state=relay,
-                request_id=request_id,
+                request_id=login_request.request_id,
                 browser_hash=token_hash(browser),
                 return_to=safe_return_to(return_to),
                 # The Lax session cookie is absent on UNC's cross-site callback POST.
@@ -141,9 +142,25 @@ def login(request: Request, saml: Saml, db: Db, return_to: str = "/"):
     except SQLAlchemyError as exc:
         db.rollback()
         raise HTTPException(503, "Authentication service unavailable") from exc
-    response = RedirectResponse(url, status_code=302)
+    nonce = secrets.token_urlsafe(32)
+    response = HTMLResponse(
+        "<!doctype html><html><body>"
+        f'<form method="post" action="{html.escape(login_request.destination, quote=True)}">'
+        f'<input type="hidden" name="SAMLRequest" value="{html.escape(login_request.saml_request, quote=True)}">'
+        f'<input type="hidden" name="RelayState" value="{html.escape(login_request.relay_state, quote=True)}">'
+        '<noscript><button type="submit">Continue to UNC sign-in</button></noscript>'
+        "</form>"
+        f'<script nonce="{nonce}">document.forms[0].submit()</script>'
+        "</body></html>"
+    )
     set_cookie(response, request, TRANSACTION_COOKIE, browser, LOGIN_TTL)
     response.headers["Cache-Control"] = "no-store"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'none'; base-uri 'none'; "
+        f"form-action {urlsplit(login_request.destination).scheme}://{urlsplit(login_request.destination).netloc}; "
+        f"script-src 'nonce-{nonce}'"
+    )
     return response
 
 

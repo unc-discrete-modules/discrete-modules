@@ -1,10 +1,8 @@
 import base64
 import time
-import zlib
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier, local
 from typing import Annotated
-from urllib.parse import parse_qs, urlencode, urlsplit
 from uuid import uuid4
 
 import pytest
@@ -114,10 +112,12 @@ def client(db_session, auth_lesson, saml_settings, monkeypatch):
 
 def begin(client, return_to="/"):
     response = client.get("/api/auth/login", params={"return_to": return_to})
-    assert response.status_code == 302
-    query = parse_qs(urlsplit(response.headers["location"]).query)
-    xml = zlib.decompress(base64.b64decode(query["SAMLRequest"][0]), -15)
-    return etree.fromstring(xml).get("ID"), query["RelayState"][0], response
+    assert response.status_code == 200
+    form = etree.HTML(response.content).find(".//form")
+    assert form is not None
+    fields = {input_.get("name"): input_.get("value") for input_ in form}
+    xml = base64.b64decode(fields["SAMLRequest"])
+    return etree.fromstring(xml).get("ID"), fields["RelayState"], response
 
 
 def count_rows(db, model, *conditions):
@@ -223,16 +223,13 @@ def test_login_reconciles_existing_user_role(
 def test_signed_request_and_metadata(client, certificates):
     request_id, _, response = begin(client)
     assert request_id
-    query = parse_qs(urlsplit(response.headers["location"]).query)
-    assert query["SigAlg"] == [C.RSA_SHA256]
-    signed = urlencode(
-        [(key, query[key][0]) for key in ("SAMLRequest", "RelayState", "SigAlg")]
-    )
-    assert OneLogin_Saml2_Utils.validate_binary_sign(
-        signed,
-        base64.b64decode(query["Signature"][0]),
+    form = etree.HTML(response.content).find(".//form")
+    assert form.get("action") == "https://sso.unc.edu/idp/profile/SAML2/POST/SSO"
+    fields = {input_.get("name"): input_.get("value") for input_ in form}
+    assert OneLogin_Saml2_Utils.validate_sign(
+        base64.b64decode(fields["SAMLRequest"]),
         certificates[3].read_text(),
-        C.RSA_SHA256,
+        xpath="/samlp:AuthnRequest/ds:Signature",
     )
     cookie = response.headers["set-cookie"]
     assert "SameSite=none" in cookie and "Secure" in cookie and "HttpOnly" in cookie
