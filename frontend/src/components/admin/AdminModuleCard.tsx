@@ -55,7 +55,7 @@ export default function AdminModuleCard({
               className="absolute left-4 top-4 max-w-[60%] rounded-md bg-white text-left text-md text-muted-navy shadow-md"
             >
               <span className="min-w-0 truncate">
-                Module {module.id}: {module.title}
+                Module {index + 1}: {module.title}
               </span>
             </Badge>
           </div>
