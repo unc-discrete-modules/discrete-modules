@@ -3,9 +3,10 @@ from sqlmodel import Field
 
 from src.models.core import ModelBase
 
-# Progress rows cascade with the content they describe: an admin who deletes or
-# replaces a lesson, quiz, or question would otherwise be blocked by student
-# history, and rows for content that no longer exists have no meaning.
+# Progress rows cascade with the content they describe, since a row for content
+# that no longer exists has no meaning. The admin API archives lessons and quizzes
+# instead of deleting them, so this only applies to direct database deletes and
+# to questions removed when a quiz is replaced.
 
 
 class LessonCompletion(ModelBase, table=True):

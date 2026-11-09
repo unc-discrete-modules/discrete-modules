@@ -65,13 +65,16 @@ uv run python -m src.seed           # insert missing module trees into DATABASE_
 ```
 
 The seed skips any module whose key already exists, preserving its entire database
-content tree. New modules are appended in file order. Deleting a seeded module
-allows it to be inserted again on the next run. `CONTENT_DIR` (or `--content-dir`)
-selects another directory. Manage existing content through the admin API.
+content tree, including archived modules. New modules are appended in file order.
+`CONTENT_DIR` (or `--content-dir`) selects another directory. Manage existing
+content through the admin API.
 
 The `/api/admin` endpoints manage modules, lessons and quizzes. Administrators can
 replace a quiz with its ordered questions and answer keys; existing question keys
-retain their IDs. Write requests require the session CSRF token and valid origin.
+retain their IDs. `DELETE` archives an item instead of removing it, hiding it from
+students while keeping progress; `POST .../restore` brings it back. List endpoints
+omit archived items unless `include_archived=true`. Write requests require the
+session CSRF token and valid origin.
 
 ## Application database sessions
 

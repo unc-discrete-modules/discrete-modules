@@ -26,6 +26,8 @@ class SeedSummary:
 
 def sync_content(session: Session, records: list[ModuleRecord]) -> SeedSummary:
     """Insert new module trees; flush without committing."""
+    # Archived modules count as existing so their keys stay claimed; otherwise the
+    # next run would insert them again.
     existing = list(session.exec(select(Module)))
     keys = {row.key for row in existing}
     position = max((row.position for row in existing), default=-1) + 1

@@ -71,14 +71,31 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Delete a module
-         * @description Delete the module and its lessons and quiz. A repository-backed module is reinserted on the next seed run.
+         * Archive a module
+         * @description Hide the module, its lessons, and its quiz from students. Nothing is removed, so student progress is kept and the module can be restored. Archived modules are not reinserted by the seed.
          */
         delete: operations["admin_delete_module"];
         options?: never;
         head?: never;
         /** Update a module */
         patch: operations["admin_update_module"];
+        trace?: never;
+    };
+    "/api/admin/modules/{module_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore an archived module */
+        post: operations["admin_restore_module"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/admin/modules/{module_id}/lessons": {
@@ -130,12 +147,32 @@ export interface paths {
         get: operations["admin_get_lesson"];
         put?: never;
         post?: never;
-        /** Delete a lesson */
+        /**
+         * Archive a lesson
+         * @description Hide the lesson from students without removing it or student progress.
+         */
         delete: operations["admin_delete_lesson"];
         options?: never;
         head?: never;
         /** Update a lesson */
         patch: operations["admin_update_lesson"];
+        trace?: never;
+    };
+    "/api/admin/lessons/{lesson_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore an archived lesson */
+        post: operations["admin_restore_lesson"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/admin/modules/{module_id}/quiz": {
@@ -173,8 +210,28 @@ export interface paths {
          */
         put: operations["admin_replace_quiz"];
         post?: never;
-        /** Delete a quiz */
+        /**
+         * Archive a quiz
+         * @description Hide the quiz from students without removing it or student attempts.
+         */
         delete: operations["admin_delete_quiz"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/quizzes/{quiz_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore an archived quiz */
+        post: operations["admin_restore_quiz"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -542,6 +599,8 @@ export interface components {
             video_url: string | null;
             /** Position */
             position: number;
+            /** Archived */
+            archived: boolean;
         };
         /** LessonSummary */
         LessonSummary: {
@@ -585,8 +644,6 @@ export interface components {
         };
         /** ModulePatch */
         ModulePatch: {
-            /** Key */
-            key?: string | null;
             /** Title */
             title?: string | null;
             /** Description */
@@ -604,6 +661,8 @@ export interface components {
             description: string;
             /** Position */
             position: number;
+            /** Archived */
+            archived: boolean;
         };
         /** ModuleSummary */
         ModuleSummary: {
@@ -747,6 +806,8 @@ export interface components {
             id: number;
             /** Module Id */
             module_id: number;
+            /** Archived */
+            archived: boolean;
             /** Questions */
             questions: components["schemas"]["QuestionResponse"][];
         };
@@ -828,7 +889,10 @@ export interface operations {
     };
     admin_list_modules: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Also return archived items. */
+                include_archived?: boolean;
+            };
             header?: {
                 /** @description Required for write requests. Get the token from GET /api/auth/me. */
                 "X-CSRF-Token"?: string | null;
@@ -1147,15 +1211,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Content conflicts with an existing record */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
             /** @description Invalid request */
             422: {
                 headers: {
@@ -1259,9 +1314,82 @@ export interface operations {
             };
         };
     };
-    admin_list_lessons: {
+    admin_restore_module: {
         parameters: {
             query?: never;
+            header?: {
+                /** @description Required for write requests. Get the token from GET /api/auth/me. */
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                module_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModuleResponse"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Admin access or CSRF validation failed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database unreachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_list_lessons: {
+        parameters: {
+            query?: {
+                /** @description Also return archived items. */
+                include_archived?: boolean;
+            };
             header?: {
                 /** @description Required for write requests. Get the token from GET /api/auth/me. */
                 "X-CSRF-Token"?: string | null;
@@ -1613,15 +1741,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Content conflicts with an existing record */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
             /** @description Invalid request */
             422: {
                 headers: {
@@ -1725,9 +1844,82 @@ export interface operations {
             };
         };
     };
-    admin_get_quiz: {
+    admin_restore_lesson: {
         parameters: {
             query?: never;
+            header?: {
+                /** @description Required for write requests. Get the token from GET /api/auth/me. */
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                lesson_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LessonResponse"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Admin access or CSRF validation failed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database unreachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_get_quiz: {
+        parameters: {
+            query?: {
+                /** @description Also return archived items. */
+                include_archived?: boolean;
+            };
             header?: {
                 /** @description Required for write requests. Get the token from GET /api/auth/me. */
                 "X-CSRF-Token"?: string | null;
@@ -2009,8 +2201,69 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Content conflicts with an existing record */
-            409: {
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Database unreachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_restore_quiz: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for write requests. Get the token from GET /api/auth/me. */
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                quiz_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizResponse"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Admin access or CSRF validation failed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -53,8 +53,11 @@ def test_admin_content_crud_and_order(client):
         == "Updated"
     )
     assert client.delete(f"/api/admin/modules/{a}").status_code == 204
-    assert client.get(f"/api/admin/lessons/{lesson_id}").status_code == 404
-    assert client.get("/api/admin/modules").json()[0]["position"] == 0
+    assert a not in [x["id"] for x in client.get("/api/admin/modules").json()]
+    listed = client.get("/api/admin/modules", params={"include_archived": True})
+    assert a in [x["id"] for x in listed.json()]
+    # Archiving removes nothing, so the module's content is still reachable by ID.
+    assert client.get(f"/api/admin/lessons/{lesson_id}").status_code == 200
 
 
 def test_quiz_replace_and_validate(client):
@@ -158,7 +161,7 @@ def test_admin_response_schemas_are_documented():
     assert quiz_schema["$ref"].endswith("/QuizResponse")
 
 
-def test_lesson_order_delete_and_normalize(client):
+def test_lesson_order_and_archive(client):
     admin(client)
     module = client.post(
         "/api/admin/modules",
@@ -176,13 +179,14 @@ def test_lesson_order_delete_and_normalize(client):
     assert client.put(f"{base}/order", json={"ids": ids[::-1]}).status_code == 200
     assert client.delete(f"/api/admin/lessons/{ids[1]}").status_code == 204
     lessons = client.get(base).json()
+    # The archived lesson keeps its slot.
     assert [(item["id"], item["position"]) for item in lessons] == [
         (ids[2], 0),
-        (ids[0], 1),
+        (ids[0], 2),
     ]
 
 
-def test_module_update_and_quiz_delete(client):
+def test_module_update_and_quiz_archive(client):
     admin(client)
     module = client.post(
         "/api/admin/modules",

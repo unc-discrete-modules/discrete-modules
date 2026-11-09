@@ -23,11 +23,14 @@ def test_openapi_documents_every_contract_route():
         "/api/admin/modules",
         "/api/admin/modules/order",
         "/api/admin/modules/{module_id}",
+        "/api/admin/modules/{module_id}/restore",
         "/api/admin/modules/{module_id}/lessons",
         "/api/admin/modules/{module_id}/lessons/order",
         "/api/admin/modules/{module_id}/quiz",
         "/api/admin/lessons/{lesson_id}",
+        "/api/admin/lessons/{lesson_id}/restore",
         "/api/admin/quizzes/{quiz_id}",
+        "/api/admin/quizzes/{quiz_id}/restore",
         "/api/modules",
         "/api/modules/{module_id}",
         "/api/modules/{module_id}/quiz",
@@ -80,7 +83,8 @@ def test_admin_routes_document_errors_and_summaries():
             expected = {"401", "403", "503"}
             if "{" in path:
                 expected |= {"404", "422"}
-            if method in {"post", "put", "patch"}:
+            # Restoring cannot conflict with other content.
+            if method in {"post", "put", "patch"} and not path.endswith("/restore"):
                 expected |= {"409", "422"}
             for status in expected:
                 ref = operation["responses"][status]["content"]["application/json"][

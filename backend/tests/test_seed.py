@@ -122,3 +122,17 @@ def test_seed_restores_deleted_module(db_session):
     db_session.flush()
     sync_content(db_session, records)
     assert db_session.exec(select(Module).where(Module.key == "sets")).one()
+
+
+def test_seed_does_not_reinsert_archived_module(db_session):
+    records = [module("sets", 1, [lesson("intro", 1)])]
+    sync_content(db_session, records)
+    row = db_session.exec(select(Module).where(Module.key == "sets")).one()
+    row.archived = True
+    db_session.flush()
+
+    summary = sync_content(db_session, records)
+
+    assert summary.modules == 0
+    rows = db_session.exec(select(Module).where(Module.key == "sets")).all()
+    assert [r.archived for r in rows] == [True]
