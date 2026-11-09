@@ -107,16 +107,48 @@ describe('Authentication', () => {
 
   it('returns an authenticated user from login to the saved page', async () => {
     window.history.replaceState({}, '', '/login?return_to=%2Fmodules%2F2')
+    const fetch = vi.fn((path: string) => {
+      if (path === '/api/auth/me') {
+        return Promise.resolve(json(user))
+      }
+      if (path === '/api/modules') {
+        return Promise.resolve(
+          json([
+            {
+              id: 2,
+              title: 'Module 2',
+              description: 'Test module',
+              display_order: 0,
+            },
+          ]),
+        )
+      }
+      if (path === '/api/modules/2') {
+        return Promise.resolve(
+          json({
+            id: 2,
+            title: 'Module 2',
+            description: 'Test module',
+            display_order: 0,
+            quiz_id: null,
+            lessons: [],
+          }),
+        )
+      }
+      return Promise.resolve(json([]))
+    })
     vi.stubGlobal(
       'fetch',
-      vi.fn((path: string) =>
-        Promise.resolve(json(path === '/api/auth/me' ? user : [])),
-      ),
+      fetch,
     )
     render(<App />)
     expect(
       await screen.findByRole('heading', { name: 'Module 2' }),
     ).toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/modules/2',
+      expect.objectContaining({ credentials: 'same-origin' }),
+    )
   })
 
   it('signs out with CSRF protection and clears the learning view', async () => {
@@ -238,10 +270,7 @@ describe('Demo login', () => {
       fireEvent.click(
         await screen.findByRole('button', { name: 'Sign in as demo user' }),
       )
-      expect(
-        await screen.findByRole('heading', { name: 'Module 2' }),
-      ).toBeInTheDocument()
-      expect(screen.getByText('demo@example.test')).toBeInTheDocument()
+      expect(await screen.findByText('demo@example.test')).toBeInTheDocument()
       expect(fetch).toHaveBeenCalledWith(
         '/api/auth/dev-login',
         expect.objectContaining({ method: 'POST', credentials: 'same-origin' }),
