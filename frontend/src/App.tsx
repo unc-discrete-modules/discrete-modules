@@ -8,6 +8,9 @@ import { CourseProvider } from './context/course-context'
 import { AuthProvider } from './context/auth-context'
 import RequireAuth from './components/RequireAuth'
 import Login from './pages/Login'
+import LessonCreation from './pages/LessonCreation'
+import ModuleEdit from './pages/ModuleEdit'
+import AdminHome from './pages/AdminHome'
 
 function LearningLayout() {
   return (
@@ -28,6 +31,7 @@ function App() {
               <Route element={<LearningLayout />}>
                 <Route element={<Layout />}>
                   <Route path="/" element={<Home />} />
+                  <Route path="/admin" element={<AdminHome />} />
                   <Route path="/modules/:moduleId" element={<Module />} />
                   <Route
                     path="/modules/:moduleId/lessons/:lessonId"
@@ -37,6 +41,11 @@ function App() {
                     path="/modules/:moduleId/quiz/:quizId"
                     element={<Quiz />}
                   />
+                  <Route
+                    path="/edit-module/:moduleId"
+                    element={<ModuleEdit />}
+                  />
+                  <Route path="/create-lesson" element={<LessonCreation />} />
                 </Route>
               </Route>
             </Route>

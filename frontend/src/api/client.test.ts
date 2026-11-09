@@ -2,10 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SESSION_EXPIRED } from '@/api'
 import {
   ApiError,
+  createModule,
+  deleteModule,
   getLesson,
   getModule,
   getQuiz,
   listModules,
+  reorderModules,
   submitQuiz,
 } from './client'
 import type { Quiz, SubmissionRequest, SubmissionResult } from '@/types/types'
@@ -95,6 +98,76 @@ describe('learning API client', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': 'csrf' },
         body: JSON.stringify(submission),
+        credentials: 'same-origin',
+      }),
+    )
+  })
+
+  it('saves module order with the authenticated admin endpoint', async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ ids: [2, 1] }))
+    vi.stubGlobal('fetch', fetch)
+    await expect(reorderModules([2, 1], 'csrf')).resolves.toEqual({
+      ids: [2, 1],
+    })
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/modules/order',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': 'csrf',
+        },
+        body: JSON.stringify({ ids: [2, 1] }),
+        credentials: 'same-origin',
+      }),
+    )
+  })
+
+  it('deletes a module with the authenticated admin endpoint', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetch)
+    await expect(deleteModule(12, 'csrf')).resolves.toBeUndefined()
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/modules/12',
+      expect.objectContaining({
+        method: 'DELETE',
+        headers: { 'X-CSRF-Token': 'csrf' },
+        credentials: 'same-origin',
+      }),
+    )
+  })
+
+  it('creates a module with the authenticated admin endpoint', async () => {
+    const createdModule = {
+      id: 12,
+      key: 'discrete-math',
+      title: 'Discrete Math',
+      description: 'An introduction to discrete mathematics.',
+      position: 0,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json(createdModule))
+    vi.stubGlobal('fetch', fetch)
+    await expect(
+      createModule(
+        'csrf',
+        'discrete-math',
+        'Discrete Math',
+        'An introduction to discrete mathematics.',
+      ),
+    ).resolves.toEqual(createdModule)
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/modules',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': 'csrf',
+        },
+        body: JSON.stringify({
+          key: 'discrete-math',
+          title: 'Discrete Math',
+          description: 'An introduction to discrete mathematics.',
+        }),
         credentials: 'same-origin',
       }),
     )

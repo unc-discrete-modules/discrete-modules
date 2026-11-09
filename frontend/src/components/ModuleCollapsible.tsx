@@ -40,7 +40,7 @@ export default function ModuleCollapsible({
       onOpenChange={onOpenChange}
       className="group/collapsible"
     >
-      <SidebarMenuItem className="list-none w-full">
+      <SidebarMenuItem className="list-none w-full text-muted-navy">
         <SidebarMenuButton
           isActive={isCurrentModule}
           aria-expanded={open}
@@ -51,7 +51,7 @@ export default function ModuleCollapsible({
           <span className="min-w-0 flex-1 truncate">
             {module.id}. {module.title}
           </span>
-          <ChevronRight className="ml-auto shrink-0 transition-transform duration-150 group-data-open/collapsible:rotate-90" />
+          <ChevronRight className="ml-auto shrink-0 transition-transform duration-150 group-data-open/collapsible:rotate-90 stroke-muted-navy" />
         </SidebarMenuButton>
 
         <CollapsibleContent id={`module-${module.id}-lessons`}>

@@ -10,6 +10,7 @@ import {
 } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { AuthContext } from '@/context/auth-context-value'
 import { CourseProvider } from '@/context/course-context'
 import { useLesson } from '@/hooks/use-lesson'
 import { useModule } from '@/hooks/use-modules'
@@ -45,11 +46,20 @@ function deferred<T>() {
 
 function renderHome() {
   return render(
-    <MemoryRouter>
-      <CourseProvider>
-        <Home />
-      </CourseProvider>
-    </MemoryRouter>,
+    <AuthContext.Provider
+      value={{
+        state: { status: 'anonymous', user: null },
+        loggedOut: false,
+        retry: vi.fn(),
+        logout: vi.fn(),
+      }}
+    >
+      <MemoryRouter>
+        <CourseProvider>
+          <Home />
+        </CourseProvider>
+      </MemoryRouter>
+    </AuthContext.Provider>,
   )
 }
 

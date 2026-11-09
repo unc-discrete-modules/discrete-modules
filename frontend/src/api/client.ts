@@ -3,6 +3,7 @@ import type {
   ErrorResponse,
   Lesson,
   Module,
+  ModuleResponse,
   ModuleSummary,
   Quiz,
   SubmissionRequest,
@@ -64,10 +65,30 @@ function isModule(value: unknown): value is Module {
   )
 }
 
+function isModuleResponse(value: unknown): value is ModuleResponse {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'number' &&
+    typeof value.key === 'string' &&
+    typeof value.title === 'string' &&
+    typeof value.description === 'string' &&
+    typeof value.position === 'number'
+  )
+}
+
+function isOrderResponse(value: unknown): value is { ids: number[] } {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.ids) &&
+    value.ids.every((id: unknown) => typeof id === 'number')
+  )
+}
+
 async function requestJson<T>(
   path: string,
   init: RequestInit,
   validate?: (value: unknown) => value is T,
+  expectNoContent = false,
 ): Promise<T> {
   let response: Response
   try {
@@ -82,6 +103,8 @@ async function requestJson<T>(
       'Unable to connect. Check your connection and try again.',
     )
   }
+
+  if (expectNoContent && response.status === 204) return undefined as T
 
   let value: unknown
   try {
@@ -115,6 +138,12 @@ async function requestJson<T>(
       body,
     )
   }
+  if (expectNoContent) {
+    throw new ApiError(
+      'The server returned an invalid response. Please try again.',
+      response.status,
+    )
+  }
   if (validate && !validate(value)) {
     throw new ApiError(
       'The server returned an invalid response. Please try again.',
@@ -130,6 +159,63 @@ export function listModules(signal?: AbortSignal): Promise<ModuleSummary[]> {
     { signal },
     (value): value is ModuleSummary[] =>
       Array.isArray(value) && value.every(isModuleSummary),
+  )
+}
+
+export function reorderModules(
+  ids: number[],
+  csrfToken: string,
+): Promise<{ ids: number[] }> {
+  return requestJson(
+    '/admin/modules/order',
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify({ ids }),
+    },
+    (value): value is { ids: number[] } =>
+      isOrderResponse(value) &&
+      value.ids.length === ids.length &&
+      value.ids.every((id, index) => id === ids[index]),
+  )
+}
+
+export function deleteModule(
+  moduleId: number,
+  csrfToken: string,
+): Promise<void> {
+  return requestJson<void>(
+    `/admin/modules/${moduleId}`,
+    {
+      method: 'DELETE',
+      headers: { 'X-CSRF-Token': csrfToken },
+    },
+    undefined,
+    true,
+  )
+}
+
+export function createModule(
+  csrfToken: string,
+  key: string,
+  title: string,
+  description: string,
+): Promise<ModuleResponse> {
+  const body = { key, title, description }
+  return requestJson(
+    '/admin/modules',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify(body),
+    },
+    isModuleResponse,
   )
 }
 
