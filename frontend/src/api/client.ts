@@ -3,6 +3,7 @@ import type {
   ErrorResponse,
   Lesson,
   Module,
+  ModuleResponse,
   ModuleSummary,
   Quiz,
   SubmissionRequest,
@@ -61,6 +62,17 @@ function isModule(value: unknown): value is Module {
         typeof lesson.id === 'number' &&
         typeof lesson.title === 'string',
     )
+  )
+}
+
+function isModuleResponse(value: unknown): value is ModuleResponse {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'number' &&
+    typeof value.key === 'string' &&
+    typeof value.title === 'string' &&
+    typeof value.description === 'string' &&
+    typeof value.position === 'number'
   )
 }
 
@@ -183,6 +195,27 @@ export function deleteModule(
     },
     undefined,
     true,
+  )
+}
+
+export function createModule(
+  csrfToken: string,
+  key: string,
+  title: string,
+  description: string,
+): Promise<ModuleResponse> {
+  const body = { key, title, description }
+  return requestJson(
+    '/admin/modules',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify(body),
+    },
+    isModuleResponse,
   )
 }
 

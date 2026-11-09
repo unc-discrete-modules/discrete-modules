@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -9,27 +9,81 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Field, FieldDescription, FieldGroup } from '@/components/ui/field'
+import { Field, FieldGroup } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { createModule } from '@/api/client'
+import { useAuth } from '@/context/auth-context-value'
+import { useModules } from '@/hooks/use-modules'
 import CreateButton from './CreateButton'
 
-function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-  event.preventDefault()
-  const formData = new FormData(event.currentTarget)
-
-  console.log({
-    name: formData.get('name'),
-    coverImage: formData.get('coverImage'),
-  })
-}
+const DEFAULT_DESCRIPTION = 'Enter description...'
 
 export function ModuleCreationDialog() {
   const [nameInvalid, setNameInvalid] = useState(false)
-  const [coverImageInvalid, setCoverImageInvalid] = useState(false)
+  const [descriptionInvalid, setDescriptionInvalid] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const { state: authState } = useAuth()
+  const { retry } = useModules()
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError(null)
+
+    if (authState.status !== 'authenticated') {
+      setError('Your session has expired. Please sign in again.')
+      return
+    }
+
+    const formData = new FormData(event.currentTarget)
+    const title = String(formData.get('name') ?? '').trim()
+    const description = String(formData.get('description') ?? '').trim()
+    const key = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+
+    if (!key) {
+      setError('Enter a name with at least one letter or number.')
+      return
+    }
+
+    if (!description) {
+      setDescriptionInvalid(true)
+      return
+    }
+
+    if (key.length > 100) {
+      setError('The module name is too long to create a module key.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await createModule(authState.user.csrf_token, key, title, description)
+      retry()
+      setOpen(false)
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to create module. Please try again.',
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
-    <Dialog>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (nextOpen) setError(null)
+      }}
+    >
       <DialogTrigger render={<CreateButton />} />
       <DialogContent className="sm:max-w-sm rounded-md">
         <form onSubmit={onSubmit}>
@@ -48,6 +102,7 @@ export function ModuleCreationDialog() {
                 className="rounded-sm border-2 border-stone-200 bg-white"
                 aria-invalid={nameInvalid}
                 aria-describedby={nameInvalid ? 'name-error' : undefined}
+                maxLength={200}
                 required
                 onInvalid={(event) => {
                   event.preventDefault()
@@ -69,57 +124,62 @@ export function ModuleCreationDialog() {
                 </p>
               )}
             </Field>
-            <Field>
-              <Label htmlFor="cover-image">Cover Image</Label>
+            <Field className="pb-5">
+              <Label htmlFor="description">Description</Label>
               <Input
-                id="cover-image"
-                name="coverImage"
-                type="url"
-                placeholder="Enter a link to an image..."
+                id="description"
+                name="description"
+                placeholder={DEFAULT_DESCRIPTION}
                 className="rounded-sm border-2 border-stone-200 bg-white aria-invalid:border-stone-200 aria-invalid:ring-0"
-                aria-invalid={coverImageInvalid}
+                aria-invalid={descriptionInvalid}
                 aria-describedby={
-                  coverImageInvalid
-                    ? 'cover-image-description cover-image-error'
-                    : 'cover-image-description'
+                  descriptionInvalid ? 'description-error' : undefined
                 }
+                required
                 onInvalid={(event) => {
                   event.preventDefault()
-                  setCoverImageInvalid(true)
+                  setDescriptionInvalid(true)
                 }}
                 onChange={(event) => {
                   if (event.currentTarget.validity.valid) {
-                    setCoverImageInvalid(false)
+                    setDescriptionInvalid(false)
                   }
                 }}
               />
-              {coverImageInvalid && (
+              {descriptionInvalid && (
                 <p
-                  id="cover-image-error"
+                  id="description-error"
                   role="alert"
                   className="rounded-sm bg-red-50 px-2 py-1 text-sm text-red-700"
                 >
-                  Please enter a URL.
+                  Please enter a module description.
                 </p>
               )}
-              <FieldDescription id="cover-image-description">
-                If you do not link an image, the cover will be solid blue.
-              </FieldDescription>
             </Field>
           </FieldGroup>
+          {error && (
+            <p role="alert" className="mt-4 text-sm text-red-700">
+              {error}
+            </p>
+          )}
           <DialogFooter>
             <DialogClose
               render={
                 <Button
                   variant="secondary"
                   className="rounded-sm text-muted-navy"
+                  disabled={submitting}
                 >
                   Cancel
                 </Button>
               }
             />
-            <Button type="submit" className="bg-light-blue rounded-sm">
-              Create
+            <Button
+              type="submit"
+              className="bg-light-blue rounded-sm"
+              disabled={submitting}
+            >
+              {submitting ? 'Creating…' : 'Create'}
             </Button>
           </DialogFooter>
         </form>
