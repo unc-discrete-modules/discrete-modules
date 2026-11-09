@@ -12,6 +12,8 @@ import { LoadingState, ErrorState } from '@/components/RequestState'
 import { useModules } from '@/hooks/use-modules'
 import { useAuth } from '@/context/auth-context-value'
 import { reorderModules } from '@/api/client'
+import { Link } from 'react-router-dom'
+import NoAccess from './NoAccess'
 
 export default function AdminHome() {
   const { modules, loading, error, retry } = useModules()
@@ -112,12 +114,25 @@ export default function AdminHome() {
   if (loading) return <LoadingState message="Loading modules..." />
   if (error) return <ErrorState error={error} retry={retry} />
 
+  // check user role
+  if (authState.status === 'authenticated' && authState.user.role !== 'admin') {
+    // redirect to student view
+    return <NoAccess />
+  }
+
   return (
     <>
       <div className="mx-10">
         <div className="flex justify-between items-start py-5">
-          <h1 className="text-3xl font-bold text-muted-navy">Create Module</h1>
-          <SwitchViewButton viewType="Student"></SwitchViewButton>
+          <h1 className="text-3xl font-bold text-muted-navy">
+            {' '}
+            {authState.status === 'authenticated'
+              ? `Welcome back, ${authState.user?.display_name}`
+              : 'Welcome back!'}{' '}
+          </h1>
+          <Link to="/">
+            <SwitchViewButton viewType="Student"></SwitchViewButton>
+          </Link>
         </div>
 
         <div className="flex gap-x-[3%] pb-5">
