@@ -23,4 +23,5 @@ export type CourseContextValue = {
   loading: boolean
   error: Error | null
   retry: () => void
+  updateModuleOrder: (ids: number[]) => void
 }

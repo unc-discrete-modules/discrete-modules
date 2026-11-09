@@ -41,6 +41,35 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
         loading: current === null,
         error: current?.error ?? null,
         retry: () => setAttempt((value) => value + 1),
+        updateModuleOrder: (ids) =>
+          setResult((previous) => {
+            if (previous?.attempt !== attempt || !previous.modules) {
+              return previous
+            }
+
+            const modulesById = new Map(
+              previous.modules.map((module) => [module.id, module]),
+            )
+            const orderedModules = ids.flatMap((id) => {
+              const module = modulesById.get(id)
+              return module ? [module] : []
+            })
+
+            if (
+              orderedModules.length !== previous.modules.length ||
+              new Set(ids).size !== previous.modules.length
+            ) {
+              return previous
+            }
+
+            return {
+              ...previous,
+              modules: orderedModules.map((module, display_order) => ({
+                ...module,
+                display_order,
+              })),
+            }
+          }),
       }}
     >
       {children}

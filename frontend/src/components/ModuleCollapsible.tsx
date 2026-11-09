@@ -49,7 +49,7 @@ export default function ModuleCollapsible({
           className="rounded-none"
         >
           <span className="min-w-0 flex-1 truncate">
-            {module.id}. {module.title}
+            {module.display_order + 1}. {module.title}
           </span>
           <ChevronRight className="ml-auto shrink-0 transition-transform duration-150 group-data-open/collapsible:rotate-90 stroke-muted-navy" />
         </SidebarMenuButton>

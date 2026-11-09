@@ -16,7 +16,7 @@ import { Link } from 'react-router-dom'
 import NoAccess from './NoAccess'
 
 export default function AdminHome() {
-  const { modules, loading, error, retry } = useModules()
+  const { modules, loading, error, retry, updateModuleOrder } = useModules()
   const { state: authState } = useAuth()
   const [moduleOrder, setModuleOrder] = useState<number[] | null>(null)
   const [reordering, setReordering] = useState(false)
@@ -99,6 +99,7 @@ export default function AdminHome() {
         authState.user.csrf_token,
       )
       setModuleOrder(result.ids)
+      updateModuleOrder(result.ids)
       setReordering(false)
     } catch (error) {
       setSaveError(

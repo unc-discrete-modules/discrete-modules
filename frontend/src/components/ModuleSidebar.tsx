@@ -1,6 +1,6 @@
 /** Sidebar that displays modules. */
 import { ErrorState, LoadingState } from './RequestState'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { Sidebar, SidebarContent, SidebarHeader } from './ui/sidebar'
 import ModuleDropdown from './ModuleCollapsible'
 import { useState } from 'react'
@@ -13,9 +13,12 @@ export default function ModuleSidebar() {
 
   return (
     <Sidebar className="drop-shadow-lg">
-      <SidebarHeader className="items-center justify-center text-2xl font-bold m-3">
-        <h1 className="pt-3 text-gray-500">Discrete Modules</h1>
-      </SidebarHeader>
+      <Link to="/">
+        <SidebarHeader className="items-center justify-center text-2xl font-bold m-3">
+          <h1 className="pt-3 text-gray-500">Discrete Modules</h1>
+        </SidebarHeader>
+      </Link>
+
       {/* here, there should be a loop that renders each module. */}
       <SidebarContent className="items-center">
         {loading && <LoadingState message="Loading modules..." />}

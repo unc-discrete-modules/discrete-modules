@@ -48,7 +48,13 @@ describe('ModuleCreationDialog', () => {
         }}
       >
         <CourseContext.Provider
-          value={{ modules: [], loading: false, error: null, retry }}
+          value={{
+            modules: [],
+            loading: false,
+            error: null,
+            retry,
+            updateModuleOrder: vi.fn(),
+          }}
         >
           <ModuleCreationDialog />
         </CourseContext.Provider>

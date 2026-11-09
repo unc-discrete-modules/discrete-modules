@@ -47,19 +47,17 @@ export default function AdminModuleCard({
           </button>
         )}
 
-        <Link to={`/modules/${module.id}`}>
-          <div className="relative">
-            <div className="h-44 w-full object-cover bg-blue-200"></div>
-            <Badge
-              variant="secondary"
-              className="absolute left-4 top-4 max-w-[60%] rounded-md bg-white text-left text-md text-muted-navy shadow-md"
-            >
-              <span className="min-w-0 truncate">
-                Module {index + 1}: {module.title}
-              </span>
-            </Badge>
-          </div>
-        </Link>
+        <div className="relative">
+          <div className="h-44 w-full object-cover bg-blue-200"></div>
+          <Badge
+            variant="secondary"
+            className="absolute left-4 top-4 max-w-[60%] rounded-md bg-white text-left text-md text-muted-navy shadow-md"
+          >
+            <span className="min-w-0 truncate">
+              Module {index + 1}: {module.title}
+            </span>
+          </Badge>
+        </div>
 
         <CardContent className="grid grid-cols-2 items-center gap-3 py-4">
           <Link to={`/edit-module/${module.id}`}>

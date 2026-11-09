@@ -1,7 +1,6 @@
 import { BrowserRouter, Outlet, Route, Routes } from 'react-router-dom'
 import Home from './pages/Home'
 import Lesson from './pages/Lesson'
-import Module from './pages/Module'
 import Quiz from './pages/Quiz'
 import Layout from './components/Layout'
 import { CourseProvider } from './context/course-context'
@@ -11,6 +10,8 @@ import Login from './pages/Login'
 import LessonCreation from './pages/LessonCreation'
 import ModuleEdit from './pages/ModuleEdit'
 import AdminHome from './pages/AdminHome'
+import NotFound from './pages/NotFound'
+import ModuleStart from './pages/ModuleStart'
 
 function LearningLayout() {
   return (
@@ -30,9 +31,13 @@ function App() {
             <Route element={<RequireAuth />}>
               <Route element={<LearningLayout />}>
                 <Route element={<Layout />}>
+                  <Route path="*" element={<NotFound />} />
                   <Route path="/" element={<Home />} />
                   <Route path="/admin" element={<AdminHome />} />
-                  <Route path="/modules/:moduleId" element={<Module />} />
+                  <Route
+                    path="/modules/:moduleId"
+                    element={<ModuleStart />}
+                  />
                   <Route
                     path="/modules/:moduleId/lessons/:lessonId"
                     element={<Lesson />}
