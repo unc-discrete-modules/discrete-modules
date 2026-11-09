@@ -1,7 +1,7 @@
 # UNC SAML authentication
 
-The application implements SP-initiated login with signed Redirect requests and
-HTTP-POST responses. The registered entity ID is
+The application implements SP-initiated login with XML-signed HTTP-POST requests
+and HTTP-POST responses. The registered entity ID is
 `https://discrete-modules.apps.cloudapps.unc.edu/` (including the trailing slash).
 The registered ACS is
 `https://discrete-modules.apps.cloudapps.unc.edu/saml/acs`.

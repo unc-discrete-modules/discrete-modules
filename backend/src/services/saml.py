@@ -1,7 +1,9 @@
+import base64
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
+from onelogin.saml2.authn_request import OneLogin_Saml2_Authn_Request
 from onelogin.saml2.constants import OneLogin_Saml2_Constants as C
 from onelogin.saml2.idp_metadata_parser import OneLogin_Saml2_IdPMetadataParser
 from onelogin.saml2.response import OneLogin_Saml2_Response
@@ -91,6 +93,14 @@ class SamlIdentity:
     display_name: str | None = None
 
 
+@dataclass(frozen=True)
+class SamlLoginRequest:
+    destination: str
+    request_id: str
+    saml_request: str
+    relay_state: str
+
+
 class SamlService:
     def __init__(self, settings: Settings):
         self.settings = settings
@@ -104,7 +114,9 @@ class SamlService:
             ):
                 raise ValueError("Missing SAML files")
             parsed = OneLogin_Saml2_IdPMetadataParser.parse(
-                settings.saml_idp_metadata_path.read_text(), entity_id=ISSUER
+                settings.saml_idp_metadata_path.read_text(),
+                required_sso_binding=C.BINDING_HTTP_POST,
+                entity_id=ISSUER,
             )
             idp = parsed["idp"]
             if (
@@ -141,7 +153,7 @@ class SamlService:
                     "signMetadata": True,
                 },
             }
-            OneLogin_Saml2_Settings(self.config)
+            self.toolkit_settings = OneLogin_Saml2_Settings(self.config)
         except Exception as exc:
             raise SamlConfigurationError from exc
 
@@ -158,13 +170,24 @@ class SamlService:
             self.config,
         )
 
-    def login(self, relay_state: str) -> tuple[str, str]:
+    def login(self, relay_state: str) -> SamlLoginRequest:
         if not self.settings.saml_email_source:
             raise SamlConfigurationError("Email mapping must be configured")
         try:
-            auth = self.auth()
-            url = auth.login(return_to=relay_state)
-            return url, auth.get_last_request_id()
+            request = OneLogin_Saml2_Authn_Request(self.toolkit_settings)
+            signed_request = OneLogin_Saml2_Utils.add_sign(
+                request.get_xml(),
+                self.settings.saml_sp_private_key_path.read_text(),
+                self.settings.saml_sp_certificate_path.read_text(),
+                sign_algorithm=C.RSA_SHA256,
+                digest_algorithm=C.SHA256,
+            )
+            return SamlLoginRequest(
+                destination=self.config["idp"]["singleSignOnService"]["url"],
+                request_id=request.get_id(),
+                saml_request=base64.b64encode(signed_request).decode(),
+                relay_state=relay_state,
+            )
         except Exception as exc:
             raise SamlConfigurationError from exc
 

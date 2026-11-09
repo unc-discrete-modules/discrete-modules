@@ -48,8 +48,8 @@ def idp_metadata(cert: Path) -> str:
         <md:KeyDescriptor use="signing"><ds:KeyInfo><ds:X509Data>
           <ds:X509Certificate>{encoded}</ds:X509Certificate>
         </ds:X509Data></ds:KeyInfo></md:KeyDescriptor>
-        <md:SingleSignOnService Binding="{C.BINDING_HTTP_REDIRECT}"
-          Location="https://sso.unc.edu/idp/profile/SAML2/Redirect/SSO"/>
+        <md:SingleSignOnService Binding="{C.BINDING_HTTP_POST}"
+          Location="https://sso.unc.edu/idp/profile/SAML2/POST/SSO"/>
       </md:IDPSSODescriptor>
     </md:EntityDescriptor>'''
 
