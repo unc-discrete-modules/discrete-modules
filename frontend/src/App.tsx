@@ -51,8 +51,14 @@ function App() {
                     path="/edit-module/:moduleId"
                     element={<ModuleEdit />}
                   />
-                  <Route path="/create-lesson" element={<LessonCreation />} />
-                  <Route path="/create-quiz" element={<QuizCreation />} />
+                  <Route
+                    path="/edit-module/:moduleId/create-lesson"
+                    element={<LessonCreation />}
+                  />
+                  <Route
+                    path="/edit-module/:moduleId/create-quiz"
+                    element={<QuizCreation />}
+                  />
                 </Route>
               </Route>
             </Route>

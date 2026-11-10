@@ -254,7 +254,7 @@ export default function ModuleEdit() {
                 Lessons
               </Label>
               <div className="flex items-center space-x-3">
-                <Link to="/create-lesson">
+                <Link to={`/edit-module/${module.id}/create-lesson`}>
                   <PlusButton />
                 </Link>
                 <ReorderButton
@@ -292,7 +292,7 @@ export default function ModuleEdit() {
                 Quizzes
               </Label>
               <div className="flex items-center space-x-3">
-                <Link to="/create-quiz">
+                <Link to={`/edit-module/${module.id}/create-quiz`}>
                   <PlusButton />
                 </Link>
                 <ReorderButton
