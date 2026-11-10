@@ -133,6 +133,7 @@ class QuestionResponse(BaseModel):
     type: QuestionType
     prompt: str
     answer: str | None
+    archived: bool
     options: list[OptionResponse] | None
 
 

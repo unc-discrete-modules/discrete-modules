@@ -5,7 +5,7 @@ from src import models
 from src.models import QuestionType
 from src.schemas import quiz as quiz_schema
 from src.schemas.module import LessonSummary, Module, ModuleSummary
-from src.services.visibility import is_visible
+from src.services.visibility import active_questions, is_visible
 
 
 def _summary(row: models.Module, display_order: int) -> ModuleSummary:
@@ -66,9 +66,8 @@ def get_quiz(session: Session, module_id: int) -> quiz_schema.Quiz | None:
     row = session.exec(statement).first()
     if row is None:
         return None
-    questions = sorted(row.questions, key=lambda question: question.position)
     return quiz_schema.Quiz(
-        id=row.id, questions=[_question(question) for question in questions]
+        id=row.id, questions=[_question(question) for question in active_questions(row)]
     )
 
 

@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from src import models
 from src.schemas.submission import SubmissionRequest, SubmissionResult
 from src.services.grading import grade_submission
-from src.services.visibility import is_visible
+from src.services.visibility import active_questions, is_visible
 
 
 def submit_quiz(
@@ -23,4 +23,4 @@ def submit_quiz(
     quiz = session.exec(statement).first()
     if quiz is None or not is_visible(quiz):
         return None
-    return grade_submission(quiz.questions, submission)
+    return grade_submission(active_questions(quiz), submission)
