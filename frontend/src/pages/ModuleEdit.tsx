@@ -83,7 +83,7 @@ export default function ModuleEdit() {
       )
       setEditedModuleName({ moduleId: module.id, title: updatedModule.title })
       updateModuleTitle(module.id, updatedModule.title)
-    } catch (error) {
+    } catch {
       setSaveError('Unable to save module name. Please try again.')
     } finally {
       setSaving(false)
@@ -225,7 +225,7 @@ export default function ModuleEdit() {
             >
               Module Name
             </Label>
-            <div className="grid w-full grid-cols-[minmax(0,4fr)_minmax(0,1fr)] gap-10 border-2">
+            <div className="grid w-full grid-cols-[minmax(0,4fr)_minmax(0,1fr)] gap-10">
               <Input
                 id="name"
                 placeholder="Rename module.."
