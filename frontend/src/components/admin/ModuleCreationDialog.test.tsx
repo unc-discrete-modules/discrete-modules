@@ -54,6 +54,7 @@ describe('ModuleCreationDialog', () => {
             error: null,
             retry,
             updateModuleOrder: vi.fn(),
+            updateModuleTitle: vi.fn(),
           }}
         >
           <ModuleCreationDialog />

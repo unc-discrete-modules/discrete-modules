@@ -183,6 +183,28 @@ export function reorderModules(
   )
 }
 
+export function reorderLessons(
+  moduleId: number,
+  ids: number[],
+  csrfToken: string,
+): Promise<{ ids: number[] }> {
+  return requestJson(
+    `/admin/modules/${moduleId}/lessons/order`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify({ ids }),
+    },
+    (value): value is { ids: number[] } =>
+      isOrderResponse(value) &&
+      value.ids.length === ids.length &&
+      value.ids.every((id, index) => id === ids[index]),
+  )
+}
+
 export function deleteModule(
   moduleId: number,
   csrfToken: string,
@@ -219,6 +241,27 @@ export function createModule(
   )
 }
 
+export function updateModule(
+  csrfToken: string,
+  moduleId: number,
+  title: string,
+  description: string,
+): Promise<ModuleResponse> {
+  const body = { title, description }
+  return requestJson(
+    `/admin/modules/${moduleId}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify(body),
+    },
+    isModuleResponse,
+  )
+}
+
 export function getModule(
   moduleId: number,
   signal?: AbortSignal,
@@ -231,6 +274,21 @@ export function getLesson(
   signal?: AbortSignal,
 ): Promise<Lesson> {
   return requestJson(`/lessons/${lessonId}`, { signal })
+}
+
+export function deleteLesson(
+  lessonId: number,
+  csrfToken: string,
+): Promise<void> {
+  return requestJson<void>(
+    `/admin/lessons/${lessonId}`,
+    {
+      method: 'DELETE',
+      headers: { 'X-CSRF-Token': csrfToken },
+    },
+    undefined,
+    true,
+  )
 }
 
 export function getQuiz(moduleId: number, signal?: AbortSignal): Promise<Quiz> {
@@ -251,4 +309,16 @@ export function submitQuiz(
     body: JSON.stringify(submission),
     signal: options.signal,
   })
+}
+
+export function deleteQuiz(quizId: number, csrfToken: string): Promise<void> {
+  return requestJson<void>(
+    `/admin/quizzes/${quizId}`,
+    {
+      method: 'DELETE',
+      headers: { 'X-CSRF-Token': csrfToken },
+    },
+    undefined,
+    true,
+  )
 }

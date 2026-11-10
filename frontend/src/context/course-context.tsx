@@ -41,6 +41,19 @@ export function CourseProvider({ children }: { children: React.ReactNode }) {
         loading: current === null,
         error: current?.error ?? null,
         retry: () => setAttempt((value) => value + 1),
+        updateModuleTitle: (moduleId, title) =>
+          setResult((previous) => {
+            if (previous?.attempt !== attempt || !previous.modules) {
+              return previous
+            }
+
+            return {
+              ...previous,
+              modules: previous.modules.map((module) =>
+                module.id === moduleId ? { ...module, title } : module,
+              ),
+            }
+          }),
         updateModuleOrder: (ids) =>
           setResult((previous) => {
             if (previous?.attempt !== attempt || !previous.modules) {

@@ -25,7 +25,7 @@ export default function ModuleCollapsible({
   open,
   onOpenChange,
 }: ModuleCollapsibleProps) {
-  const { moduleId, lessonId } = useParams()
+  const { moduleId, lessonId, quizId } = useParams()
   const isCurrentModule = Number(moduleId) === module.id
   const {
     module: details,
@@ -44,7 +44,7 @@ export default function ModuleCollapsible({
         <SidebarMenuButton
           isActive={isCurrentModule}
           aria-expanded={open}
-          aria-controls={`module-${module.id}-lessons`}
+          aria-controls={`module-${module.id}-content`}
           onClick={() => onOpenChange(!open)}
           className="rounded-none"
         >
@@ -54,7 +54,7 @@ export default function ModuleCollapsible({
           <ChevronRight className="ml-auto shrink-0 transition-transform duration-150 group-data-open/collapsible:rotate-90 stroke-muted-navy" />
         </SidebarMenuButton>
 
-        <CollapsibleContent id={`module-${module.id}-lessons`}>
+        <CollapsibleContent id={`module-${module.id}-content`}>
           <SidebarMenuSub className="mx-0 w-full translate-x-0 border-l-0 px-0 py-0">
             {lessonsLoading && (
               <li>
@@ -83,6 +83,23 @@ export default function ModuleCollapsible({
             ))}
             {details?.lessons.length === 0 && (
               <li className="px-2 py-1 text-sm">No lessons available.</li>
+            )}
+            {details?.quiz_id != null && (
+              <SidebarMenuSubItem className="list-none">
+                <SidebarMenuSubButton
+                  render={
+                    <Link
+                      to={`/modules/${module.id}/quiz/${details.quiz_id}`}
+                    />
+                  }
+                  isActive={details.quiz_id === Number(quizId)}
+                  className="h-7 w-full items-center overflow-hidden rounded-none whitespace-nowrap pl-8"
+                >
+                  <span className="min-w-0 flex-1 truncate">
+                    Quiz 1
+                  </span>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
             )}
           </SidebarMenuSub>
         </CollapsibleContent>
