@@ -77,6 +77,11 @@ students while keeping progress; `POST .../restore` brings it back. List endpoin
 omit archived items unless `include_archived=true`. Write requests require the
 session CSRF token and valid origin.
 
+Submitting a quiz (`POST /api/quizzes/{id}/submissions`) grades the answers and
+records a `quiz_attempts` row with one `question_responses` row per question for
+the signed-in user. The score counts correct auto-graded questions; free responses
+are stored but never scored.
+
 ## Application database sessions
 
 Use `get_db_session` as a FastAPI dependency for one SQLModel session per

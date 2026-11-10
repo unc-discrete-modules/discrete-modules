@@ -314,7 +314,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Submit answers and get per-question feedback */
+        /**
+         * Submit answers and get per-question feedback
+         * @description Grades the answers and records the attempt for the signed-in user.
+         */
         post: operations["submit_quiz"];
         delete?: never;
         options?: never;

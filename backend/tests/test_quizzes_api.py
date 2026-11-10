@@ -1,6 +1,10 @@
 import pytest
+from fastapi.testclient import TestClient
+from sqlmodel import select
 
-from src.models import QuestionType
+from src.database import get_db_session
+from src.main import create_app
+from src.models import Question, QuestionResponse, QuestionType, QuizAttempt
 from tests.helpers import UNUSED_ID, add_module, add_question
 
 
@@ -188,3 +192,89 @@ def test_quiz_without_a_correct_option_is_a_json_500(client, db_session):
             "details": None,
         }
     }
+
+
+def attempts(db_session, quiz):
+    return db_session.exec(
+        select(QuizAttempt).where(QuizAttempt.quiz_id == quiz["id"])
+    ).all()
+
+
+def stored_responses(db_session, attempt):
+    rows = db_session.exec(
+        select(QuestionResponse).where(QuestionResponse.attempt_id == attempt.id)
+    )
+    return {row.question_id: row for row in rows}
+
+
+def test_submission_records_attempt_and_responses(
+    client, db_session, signed_in_user, quiz
+):
+    assert submit(client, quiz, body(quiz)).status_code == 200
+
+    (attempt,) = attempts(db_session, quiz)
+    assert attempt.user_id == signed_in_user.id
+    # The free response is stored but never scored.
+    assert (attempt.score, attempt.max_score) == (2, 2)
+    stored = stored_responses(db_session, attempt)
+    assert set(stored) == {quiz["choice"], quiz["blank"], quiz["essay"]}
+    assert (stored[quiz["choice"]].answer, stored[quiz["choice"]].correct) == (
+        "Right",
+        True,
+    )
+    assert stored[quiz["blank"]].answer == "counter  example"
+    assert (stored[quiz["essay"]].answer, stored[quiz["essay"]].correct) == (
+        "My attempt.",
+        None,
+    )
+
+
+def test_score_counts_only_correct_graded_answers(client, db_session, quiz):
+    assert (
+        submit(client, quiz, body(quiz, option="wrong", blank="no")).status_code == 200
+    )
+
+    (attempt,) = attempts(db_session, quiz)
+    assert (attempt.score, attempt.max_score) == (0, 2)
+
+
+def test_each_submission_is_a_separate_attempt(client, db_session, quiz):
+    submit(client, quiz, body(quiz))
+    submit(client, quiz, body(quiz, option="wrong"))
+
+    first, second = sorted(attempts(db_session, quiz), key=lambda row: row.id)
+    assert (first.score, second.score) == (2, 1)
+
+
+def test_failed_submissions_record_nothing(client, db_session, quiz):
+    incomplete = body(quiz)
+    incomplete["answers"].pop()
+
+    assert submit(client, quiz, incomplete).status_code == 422
+    missing = client.post("/api/quizzes/2000000000/submissions", json=body(quiz))
+    assert missing.status_code == 404
+    assert attempts(db_session, quiz) == []
+
+
+def test_archived_question_is_not_recorded(client, db_session, quiz):
+    db_session.get(Question, quiz["essay"]).archived = True
+    db_session.flush()
+    payload = body(quiz)
+    payload["answers"].pop()
+
+    assert submit(client, quiz, payload).status_code == 200
+    (attempt,) = attempts(db_session, quiz)
+    assert set(stored_responses(db_session, attempt)) == {
+        quiz["choice"],
+        quiz["blank"],
+    }
+
+
+def test_signed_out_submission_is_rejected_and_records_nothing(db_session, quiz):
+    app = create_app()
+    app.dependency_overrides[get_db_session] = lambda: db_session
+    with TestClient(app, raise_server_exceptions=False) as anonymous:
+        response = submit(anonymous, quiz, body(quiz))
+
+    assert response.status_code == 401
+    assert attempts(db_session, quiz) == []

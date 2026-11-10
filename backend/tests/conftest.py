@@ -1,4 +1,6 @@
 import os
+import time
+from dataclasses import replace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -7,6 +9,7 @@ from sqlmodel import Session, create_engine
 from src.config import Settings
 from src.database import get_db_session
 from src.main import create_app
+from src.models import User
 from src.services.auth import AuthenticatedUser, require_user
 
 
@@ -48,11 +51,22 @@ def db_session():
 
 
 @pytest.fixture
-def client(db_session, authenticated_user):
+def signed_in_user(db_session, authenticated_user):
+    """The authenticated user backed by a database row, as attempts require."""
+    row = User(
+        issuer="urn:test", email=authenticated_user.email, created_at=int(time.time())
+    )
+    db_session.add(row)
+    db_session.flush()
+    return replace(authenticated_user, id=row.id)
+
+
+@pytest.fixture
+def client(db_session, signed_in_user):
     """Signed-in client whose requests share the test transaction."""
     app = create_app()
     app.dependency_overrides[get_db_session] = lambda: db_session
-    app.dependency_overrides[require_user] = lambda: authenticated_user
+    app.dependency_overrides[require_user] = lambda: signed_in_user
     # Unhandled errors are re-raised by default; the 500 envelope is under test.
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
