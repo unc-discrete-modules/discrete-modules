@@ -8,6 +8,7 @@ import { AuthProvider } from './context/auth-context'
 import RequireAuth from './components/RequireAuth'
 import Login from './pages/Login'
 import LessonCreation from './pages/LessonCreation'
+import QuizCreation from './pages/QuizCreation'
 import ModuleEdit from './pages/ModuleEdit'
 import AdminHome from './pages/AdminHome'
 import NotFound from './pages/NotFound'
@@ -51,6 +52,7 @@ function App() {
                     element={<ModuleEdit />}
                   />
                   <Route path="/create-lesson" element={<LessonCreation />} />
+                  <Route path="/create-quiz" element={<QuizCreation />} />
                 </Route>
               </Route>
             </Route>
