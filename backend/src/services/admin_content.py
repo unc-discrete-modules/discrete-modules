@@ -1,5 +1,7 @@
 """Content administration operations."""
 
+from itertools import count
+
 from fastapi import HTTPException, Response
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
@@ -133,14 +135,11 @@ def lesson_data(row: Lesson) -> LessonResponse:
     )
 
 
-def quiz_data(db: Session, quiz: Quiz) -> QuizResponse:
-    questions = list(
-        db.exec(
-            select(Question)
-            .where(Question.quiz_id == quiz.id)
-            .order_by(Question.position)
-        )
-    )
+def quiz_data(db: Session, quiz: Quiz, include_archived: bool = False) -> QuizResponse:
+    query = select(Question).where(Question.quiz_id == quiz.id)
+    if not include_archived:
+        query = query.where(Question.archived.is_(False))
+    questions = list(db.exec(query.order_by(Question.position)))
     result = []
     for question in questions:
         options = list(
@@ -157,6 +156,7 @@ def quiz_data(db: Session, quiz: Quiz) -> QuizResponse:
                 type=question.type,
                 prompt=question.prompt,
                 answer=question.expected_answer,
+                archived=question.archived,
                 options=[
                     OptionResponse(text=o.text, correct=o.is_correct) for o in options
                 ]
@@ -274,17 +274,21 @@ def replace_questions(db, quiz, data):
         + len(data.questions)
         + 1
     )
+    # Questions missing from the payload are archived, not deleted, so student
+    # responses and the scores recorded with them stay intact.
     for key, question in existing.items():
-        if key not in wanted:
-            db.delete(question)
-        else:
+        if key in wanted:
             question.position += offset
-            db.add(question)
+        question.archived = key not in wanted
+        db.add(question)
     db.flush()
-    for position, item in enumerate(data.questions):
+    # Archived questions keep their slot, so active ones fill the free slots.
+    held = {q.position for key, q in existing.items() if key not in wanted}
+    free_slots = (slot for slot in count() if slot not in held)
+    for item in data.questions:
         q = existing.get(item.key) or Question(quiz_id=quiz.id, key=item.key)
         q.position, q.type, q.prompt, q.expected_answer = (
-            position,
+            next(free_slots),
             item.type,
             item.prompt,
             item.answer,
@@ -341,7 +345,7 @@ def read_quiz(module_id: int, db: Db, include_archived: bool = False) -> QuizRes
     quiz = db.exec(select(Quiz).where(Quiz.module_id == module_id)).first()
     if quiz is None or (quiz.archived and not include_archived):
         raise HTTPException(404, "Quiz not found")
-    return quiz_data(db, quiz)
+    return quiz_data(db, quiz, include_archived)
 
 
 def update_quiz(quiz_id: int, data: QuizInput, db: Db) -> QuizResponse:

@@ -145,6 +145,10 @@ class Question(ModelBase, table=True):
     prompt: str = Field(sa_type=Text)
     expected_answer: str | None = Field(default=None, sa_type=Text)
     position: int
+    archived: bool = Field(
+        default=False,
+        sa_column_kwargs={"server_default": false()},
+    )
 
     quiz: Quiz = Relationship(back_populates="questions")
     answer_options: list["AnswerOption"] = Relationship(

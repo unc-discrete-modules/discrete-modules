@@ -1,10 +1,12 @@
-from src.services.auth import AuthenticatedUser, require_user
+from dataclasses import replace
+
+from src.services.auth import require_user
 
 
 def admin(client):
-    client.app.dependency_overrides[require_user] = lambda: AuthenticatedUser(
-        1, "admin@example.unc.edu", "admin", "csrf", "hash"
-    )
+    # Keep the client's user row: attempts recorded by an admin need a real user.
+    user = client.app.dependency_overrides[require_user]()
+    client.app.dependency_overrides[require_user] = lambda: replace(user, role="admin")
 
 
 def test_admin_content_crud_and_order(client):

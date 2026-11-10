@@ -206,7 +206,7 @@ export interface paths {
         get?: never;
         /**
          * Replace a quiz’s questions
-         * @description Replace the ordered questions and answer keys. Questions with retained keys keep their IDs.
+         * @description Replace the ordered questions and answer keys. Questions with retained keys keep their IDs. Questions left out are archived, keeping student responses; including a key again restores it.
          */
         put: operations["admin_replace_quiz"];
         post?: never;
@@ -314,7 +314,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Submit answers and get per-question feedback */
+        /**
+         * Submit answers and get per-question feedback
+         * @description Grades the answers and records the attempt for the signed-in user.
+         */
         post: operations["submit_quiz"];
         delete?: never;
         options?: never;
@@ -754,6 +757,8 @@ export interface components {
             prompt: string;
             /** Answer */
             answer: string | null;
+            /** Archived */
+            archived: boolean;
             /** Options */
             options: components["schemas"]["OptionResponse"][] | null;
         };

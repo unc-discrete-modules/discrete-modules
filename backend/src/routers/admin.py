@@ -216,7 +216,7 @@ def read_quiz(
     "/quizzes/{quiz_id}",
     operation_id="admin_replace_quiz",
     summary="Replace a quiz’s questions",
-    description="Replace the ordered questions and answer keys. Questions with retained keys keep their IDs.",
+    description="Replace the ordered questions and answer keys. Questions with retained keys keep their IDs. Questions left out are archived, keeping student responses; including a key again restores it.",
     responses=NOT_FOUND | INVALID | CONFLICT,
 )
 def update_quiz(quiz_id: int, data: QuizInput, db: Db) -> QuizResponse:

@@ -71,10 +71,16 @@ content through the admin API.
 
 The `/api/admin` endpoints manage modules, lessons and quizzes. Administrators can
 replace a quiz with its ordered questions and answer keys; existing question keys
-retain their IDs. `DELETE` archives an item instead of removing it, hiding it from
+retain their IDs, and questions left out are archived so stored student responses
+survive. Sending an archived key again restores it. `DELETE` archives an item instead of removing it, hiding it from
 students while keeping progress; `POST .../restore` brings it back. List endpoints
 omit archived items unless `include_archived=true`. Write requests require the
 session CSRF token and valid origin.
+
+Submitting a quiz (`POST /api/quizzes/{id}/submissions`) grades the answers and
+records a `quiz_attempts` row with one `question_responses` row per question for
+the signed-in user. The score counts correct auto-graded questions; free responses
+are stored but never scored.
 
 ## Application database sessions
 

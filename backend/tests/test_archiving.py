@@ -2,8 +2,16 @@ import time
 from uuid import uuid4
 
 import pytest
+from sqlmodel import select
 
-from src.models import Lesson, LessonCompletion, QuizAttempt, User
+from src.models import (
+    Lesson,
+    LessonCompletion,
+    Question,
+    QuestionResponse,
+    QuizAttempt,
+    User,
+)
 from tests.test_admin_content import admin
 
 QUESTION = {"key": "q", "type": "fill_in_blank", "prompt": "Name it", "answer": "x"}
@@ -248,3 +256,130 @@ def test_archiving_keeps_student_progress(api, db_session):
         assert db_session.get(LessonCompletion, completion.id) is not None
         assert db_session.get(QuizAttempt, attempt.id) is not None
     assert db_session.get(Lesson, lesson["id"]) is not None
+
+
+def question(key):
+    return {"key": key, "type": "fill_in_blank", "prompt": key, "answer": key}
+
+
+def replace_quiz(api, quiz, *keys):
+    return api.put(
+        f"/api/admin/quizzes/{quiz['id']}",
+        json={"questions": [question(key) for key in keys]},
+    )
+
+
+def admin_questions(api, module, **params):
+    response = api.get(f"/api/admin/modules/{module['id']}/quiz", params=params)
+    assert response.status_code == 200, response.text
+    return response.json()["questions"]
+
+
+def make_quiz_with(api, *keys):
+    module = make_module(api)
+    response = api.post(
+        f"/api/admin/modules/{module['id']}/quiz",
+        json={"questions": [question(key) for key in keys]},
+    )
+    assert response.status_code == 201, response.text
+    return module, response.json()
+
+
+def test_removed_question_keeps_stored_responses(api, db_session):
+    _, quiz = make_quiz_with(api, "a", "b")
+    ids = {q["key"]: q["id"] for q in quiz["questions"]}
+    user = User(
+        issuer="urn:test",
+        email=f"{uuid4().hex}@example.test",
+        created_at=int(time.time()),
+    )
+    db_session.add(user)
+    db_session.flush()
+    attempt = QuizAttempt(
+        user_id=user.id,
+        quiz_id=quiz["id"],
+        score=2,
+        max_score=2,
+        submitted_at=int(time.time()),
+    )
+    db_session.add(attempt)
+    db_session.flush()
+    responses = [
+        QuestionResponse(
+            attempt_id=attempt.id, question_id=ids[key], answer=key, correct=True
+        )
+        for key in ("a", "b")
+    ]
+    db_session.add_all(responses)
+    db_session.flush()
+
+    assert replace_quiz(api, quiz, "a").status_code == 200
+
+    db_session.expire_all()
+    stored = db_session.exec(
+        select(QuestionResponse).where(QuestionResponse.attempt_id == attempt.id)
+    ).all()
+    assert {r.question_id for r in stored} == set(ids.values())
+    assert db_session.get(Question, ids["b"]).archived is True
+    assert len(stored) == attempt.max_score
+
+
+def test_archived_question_is_ignored_by_students_and_grading(api):
+    module, quiz = make_quiz_with(api, "a", "b")
+    ids = {q["key"]: q["id"] for q in quiz["questions"]}
+    assert replace_quiz(api, quiz, "a").status_code == 200
+
+    shown = api.get(f"/api/modules/{module['id']}/quiz").json()["questions"]
+    assert [q["id"] for q in shown] == [ids["a"]]
+
+    def answer(key):
+        return {"question_id": ids[key], "type": "fill_in_blank", "text": key}
+
+    url = f"/api/quizzes/{quiz['id']}/submissions"
+    graded = api.post(url, json={"answers": [answer("a")]})
+    assert graded.status_code == 200
+    assert [r["question_id"] for r in graded.json()["results"]] == [ids["a"]]
+    # Answering an archived question is a mismatch, not a bonus answer.
+    stale = api.post(url, json={"answers": [answer("a"), answer("b")]})
+    assert stale.status_code == 422
+
+
+def test_admin_quiz_read_lists_archived_questions_on_request(api):
+    module, quiz = make_quiz_with(api, "a", "b")
+    replace_quiz(api, quiz, "a")
+
+    assert [q["key"] for q in admin_questions(api, module)] == ["a"]
+    everything = admin_questions(api, module, include_archived=True)
+    assert [(q["key"], q["archived"]) for q in everything] == [
+        ("a", False),
+        ("b", True),
+    ]
+
+
+def test_readded_key_restores_the_same_question(api):
+    _, quiz = make_quiz_with(api, "a", "b")
+    original = {q["key"]: q["id"] for q in quiz["questions"]}
+    replace_quiz(api, quiz, "a")
+
+    restored = replace_quiz(api, quiz, "b", "a").json()["questions"]
+
+    assert [q["key"] for q in restored] == ["b", "a"]
+    assert {q["key"]: q["id"] for q in restored} == original
+    assert not any(q["archived"] for q in restored)
+
+
+def test_archived_questions_keep_their_position_slot(api, db_session):
+    module, quiz = make_quiz_with(api, "a", "b", "c")
+    ids = {q["key"]: q["id"] for q in quiz["questions"]}
+
+    # Archive the middle question, then add, reorder and shrink around it.
+    replace_quiz(api, quiz, "a", "c")
+    replace_quiz(api, quiz, "d", "c", "a", "e")
+    replace_quiz(api, quiz, "e", "a")
+
+    db_session.expire_all()
+    rows = db_session.exec(select(Question).where(Question.quiz_id == quiz["id"])).all()
+    positions = [row.position for row in rows]
+    assert len(positions) == len(set(positions))
+    assert db_session.get(Question, ids["b"]).position == 1
+    assert [q["key"] for q in admin_questions(api, module)] == ["e", "a"]
