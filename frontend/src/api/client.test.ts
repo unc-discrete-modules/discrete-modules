@@ -3,13 +3,17 @@ import { SESSION_EXPIRED } from '@/api'
 import {
   ApiError,
   createModule,
+  deleteLesson,
   deleteModule,
+  deleteQuiz,
   getLesson,
   getModule,
   getQuiz,
   listModules,
+  reorderLessons,
   reorderModules,
   submitQuiz,
+  updateModule,
 } from './client'
 import type { Quiz, SubmissionRequest, SubmissionResult } from '@/types/types'
 
@@ -123,12 +127,90 @@ describe('learning API client', () => {
     )
   })
 
+  it('saves lesson order with the authenticated admin endpoint', async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ ids: [3, 2] }))
+    vi.stubGlobal('fetch', fetch)
+    await expect(reorderLessons(12, [3, 2], 'csrf')).resolves.toEqual({
+      ids: [3, 2],
+    })
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/modules/12/lessons/order',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': 'csrf',
+        },
+        body: JSON.stringify({ ids: [3, 2] }),
+        credentials: 'same-origin',
+      }),
+    )
+  })
+
   it('deletes a module with the authenticated admin endpoint', async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
     vi.stubGlobal('fetch', fetch)
     await expect(deleteModule(12, 'csrf')).resolves.toBeUndefined()
     expect(fetch).toHaveBeenCalledWith(
       '/api/admin/modules/12',
+      expect.objectContaining({
+        method: 'DELETE',
+        headers: { 'X-CSRF-Token': 'csrf' },
+        credentials: 'same-origin',
+      }),
+    )
+  })
+
+  it('updates a module with the authenticated admin endpoint without changing its key', async () => {
+    const updatedModule = {
+      id: 12,
+      key: 'discrete-math',
+      title: 'Discrete Math',
+      description: 'Updated introduction.',
+      position: 0,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json(updatedModule))
+    vi.stubGlobal('fetch', fetch)
+    await expect(
+      updateModule('csrf', 12, 'Discrete Math', 'Updated introduction.'),
+    ).resolves.toEqual(updatedModule)
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/modules/12',
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': 'csrf',
+        },
+        body: JSON.stringify({
+          title: 'Discrete Math',
+          description: 'Updated introduction.',
+        }),
+        credentials: 'same-origin',
+      }),
+    )
+  })
+
+  it('deletes a lesson with the authenticated admin endpoint', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetch)
+    await expect(deleteLesson(14, 'csrf')).resolves.toBeUndefined()
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/lessons/14',
+      expect.objectContaining({
+        method: 'DELETE',
+        headers: { 'X-CSRF-Token': 'csrf' },
+        credentials: 'same-origin',
+      }),
+    )
+  })
+
+  it('deletes a quiz with the authenticated admin endpoint', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetch)
+    await expect(deleteQuiz(21, 'csrf')).resolves.toBeUndefined()
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/quizzes/21',
       expect.objectContaining({
         method: 'DELETE',
         headers: { 'X-CSRF-Token': 'csrf' },
