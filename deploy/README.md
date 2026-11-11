@@ -65,13 +65,11 @@ oc create secret generic saml-credentials \
 ```
 
 The Secret is mounted read-only into the backend. Confirm the OpenShift-assigned
-group can read the mounted files (mode 0440). Configure `SAML_EMAIL_SOURCE` in
-`deploy/configmap.yaml` after confirming whether UNC returns email as an
-email-format NameID (`nameid`) or an attribute (`attribute`, also requiring
-`SAML_EMAIL_ATTRIBUTE`). The checked-in configuration deliberately leaves this
-unset, so sign-in fails closed until confirmed. To show a user's Onyen and
-display name, also set `SAML_ONYEN_ATTRIBUTE` and `SAML_DISPLAY_NAME_ATTRIBUTE` to
-the exact released Attribute Names; both are optional and never block sign-in. See the
+group can read the mounted files (mode 0440). `deploy/configmap.yaml` selects
+the email-format NameID UNC reports and maps `uid` to Onyen and `givenName` to
+the displayed name. Confirm the latter two are the exact Attribute Names in a
+successful assertion; both mappings are optional and never block sign-in. The
+displayed name is the given name, not the full name. See the
 [SAML guide](../backend/saml/README.md) for integration and renewal procedures.
 
 Set `ADMIN_EMAILS` in `deploy/configmap.yaml` to a JSON array of full UNC

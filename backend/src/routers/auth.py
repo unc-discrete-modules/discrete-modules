@@ -25,13 +25,12 @@ from src.services.auth import (
     SESSION_COOKIE,
     SESSION_TTL,
     TRANSACTION_COOKIE,
-    AuthenticatedUser,
+    CurrentUser,
     cleanup_expired,
     create_session,
     establish_session,
     get_or_create_user,
     reconcile_role,
-    require_user,
     safe_return_to,
     token_hash,
 )
@@ -44,7 +43,6 @@ from src.services.saml import (
 
 router = APIRouter(tags=["authentication"])
 Db = Annotated[Session, Depends(get_db_session)]
-CurrentUser = Annotated[AuthenticatedUser, Depends(require_user)]
 logger = logging.getLogger(__name__)
 MAX_SAML_BODY = 1024 * 1024
 

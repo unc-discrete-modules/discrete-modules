@@ -21,6 +21,7 @@ def test_openapi_documents_every_contract_route():
     assert set(paths) == {
         "/api/",
         "/api/admin/modules",
+        "/api/admin/progress",
         "/api/admin/modules/order",
         "/api/admin/modules/{module_id}",
         "/api/admin/modules/{module_id}/restore",
@@ -34,7 +35,10 @@ def test_openapi_documents_every_contract_route():
         "/api/modules",
         "/api/modules/{module_id}",
         "/api/modules/{module_id}/quiz",
+        "/api/modules/{module_id}/progress",
         "/api/lessons/{lesson_id}",
+        "/api/lessons/{lesson_id}/complete",
+        "/api/me/progress",
         "/api/quizzes/{quiz_id}/submissions",
         "/api/healthz",
         "/api/auth/login",
@@ -48,6 +52,8 @@ def test_openapi_documents_every_contract_route():
         ("/api/lessons/{lesson_id}", "get"),
         ("/api/modules/{module_id}/quiz", "get"),
         ("/api/quizzes/{quiz_id}/submissions", "post"),
+        ("/api/modules/{module_id}/progress", "get"),
+        ("/api/lessons/{lesson_id}/complete", "post"),
     ]:
         responses = paths[path][method]["responses"]
         for status in ("404", "422"):
