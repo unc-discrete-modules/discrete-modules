@@ -11,8 +11,12 @@ type ContentProps = {
   index: number
   name: string
   contentType?: 'lesson' | 'quiz'
+  // Where the Edit link goes.
+  editTo: string
   reordering: boolean
   disabled?: boolean
+  // A rejection's message is shown in the confirmation popup.
+  onDelete: () => Promise<void>
 }
 
 export default function ContentRow({
@@ -20,16 +24,37 @@ export default function ContentRow({
   index,
   name,
   contentType = 'lesson',
+  editTo,
   reordering,
   disabled = false,
+  onDelete,
 }: ContentProps) {
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const deleteAnchorRef = useRef<HTMLDivElement>(null)
   const { ref, handleRef, isDragging } = useSortable({
     id,
     index,
     disabled: !reordering || disabled,
   })
+
+  async function handleDelete() {
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await onDelete()
+      setDeleteOpen(false)
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error
+          ? error.message
+          : `Unable to delete ${contentType}. Please try again.`,
+      )
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <div
@@ -50,7 +75,7 @@ export default function ContentRow({
       <p className="text-muted-navy text-md font-semibold">{name}</p>
       <div className="space-x-3">
         <Link
-          to={`/edit-lesson/${id}`}
+          to={editTo}
           className="text-light-blue font-bold hover:saturate-120 hover:scale-102"
         >
           Edit
@@ -58,12 +83,15 @@ export default function ContentRow({
         <span className="text-gray-300 font-bold">|</span>
         <div ref={deleteAnchorRef} className="inline-block">
           <DeleteConfirmation
-            deleteType="content"
+            deleteType={contentType}
             open={deleteOpen}
-            onOpenChange={setDeleteOpen}
-            onConfirm={() => setDeleteOpen(false)}
-            confirming={false}
-            error={null}
+            onOpenChange={(open) => {
+              setDeleteOpen(open)
+              if (open) setDeleteError(null)
+            }}
+            onConfirm={handleDelete}
+            confirming={deleting}
+            error={deleteError}
             anchor={deleteAnchorRef}
             trigger={
               <button

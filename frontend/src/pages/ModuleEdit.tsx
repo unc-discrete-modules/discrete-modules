@@ -12,7 +12,12 @@ import { SaveFillButton } from '@/components/admin/SaveButton'
 import ReorderButton from '@/components/admin/ReorderButton'
 import PlusButton from '@/components/admin/PlusButton'
 import ContentRow from '@/components/admin/ContentRow'
-import { reorderLessons, updateModule } from '@/api/client'
+import {
+  deleteLesson,
+  deleteQuiz,
+  reorderLessons,
+  updateModule,
+} from '@/api/client'
 import { ErrorState, LoadingState } from '@/components/RequestState'
 
 export default function ModuleEdit() {
@@ -25,7 +30,8 @@ export default function ModuleEdit() {
   const [lessonOrder, setLessonOrder] = useState<number[] | null>(null)
   const [reordering, setReordering] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
+  const [nameError, setNameError] = useState<string | null>(null)
+  const [orderError, setOrderError] = useState<string | null>(null)
   const [quizOrder, setQuizOrder] = useState<number[] | null>(null)
   const [reorderingQuizzes, setReorderingQuizzes] = useState(false)
   const [editedModuleName, setEditedModuleName] = useState<{
@@ -73,7 +79,7 @@ export default function ModuleEdit() {
     }
 
     setSaving(true)
-    setSaveError(null)
+    setNameError(null)
     try {
       const updatedModule = await updateModule(
         authState.user.csrf_token,
@@ -84,10 +90,20 @@ export default function ModuleEdit() {
       setEditedModuleName({ moduleId: module.id, title: updatedModule.title })
       updateModuleTitle(module.id, updatedModule.title)
     } catch {
-      setSaveError('Unable to save module name. Please try again.')
+      setNameError('Unable to save module name. Please try again.')
     } finally {
       setSaving(false)
     }
+  }
+
+  // Deleting archives the content on the server, so the module is reloaded to
+  // drop it from the lists. A failure is thrown for the row to display.
+  async function deleteContent(remove: (csrfToken: string) => Promise<void>) {
+    if (authState.status !== 'authenticated') {
+      throw new Error('Your session has expired. Please sign in again.')
+    }
+    await remove(authState.user.csrf_token)
+    retry()
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -122,19 +138,19 @@ export default function ModuleEdit() {
 
   async function handleReorderClick() {
     if (!reordering) {
-      setSaveError(null)
+      setOrderError(null)
       setReordering(true)
       return
     }
 
     if (authState.status !== 'authenticated') {
-      setSaveError('Your session has expired. Please sign in again.')
+      setOrderError('Your session has expired. Please sign in again.')
       return
     }
     if (!module) return
 
     setSaving(true)
-    setSaveError(null)
+    setOrderError(null)
     try {
       const result = await reorderLessons(
         module.id,
@@ -144,7 +160,7 @@ export default function ModuleEdit() {
       setLessonOrder(result.ids)
       setReordering(false)
     } catch (error) {
-      setSaveError(
+      setOrderError(
         error instanceof Error
           ? error.message
           : 'Unable to save lesson order. Please try again.',
@@ -240,9 +256,9 @@ export default function ModuleEdit() {
               />
               <SaveFillButton onClick={handleSave} />
             </div>
-            {saveError && (
+            {nameError && (
               <p role="alert" className="mt-2 text-sm text-red-700">
-                {saveError}
+                {nameError}
               </p>
             )}
           </div>
@@ -254,7 +270,7 @@ export default function ModuleEdit() {
                 Lessons
               </Label>
               <div className="flex items-center space-x-3">
-                <Link to="/create-lesson">
+                <Link to={`/edit-module/${module.id}/create-lesson`}>
                   <PlusButton />
                 </Link>
                 <ReorderButton
@@ -264,9 +280,9 @@ export default function ModuleEdit() {
                 />
               </div>
             </div>
-            {saveError && (
+            {orderError && (
               <p role="alert" className="text-sm text-red-700">
-                {saveError}
+                {orderError}
               </p>
             )}
             <DragDropProvider onDragEnd={handleDragEnd}>
@@ -278,8 +294,14 @@ export default function ModuleEdit() {
                     id={lesson.id}
                     index={index}
                     name={lesson.title}
+                    editTo={`/edit-module/${module.id}/edit-lesson/${lesson.id}`}
                     reordering={reordering}
                     disabled={saving}
+                    onDelete={() =>
+                      deleteContent((csrfToken) =>
+                        deleteLesson(lesson.id, csrfToken),
+                      )
+                    }
                   />
                 ))}
               </div>
@@ -292,7 +314,7 @@ export default function ModuleEdit() {
                 Quizzes
               </Label>
               <div className="flex items-center space-x-3">
-                <Link to="/create-quiz">
+                <Link to={`/edit-module/${module.id}/create-quiz`}>
                   <PlusButton />
                 </Link>
                 <ReorderButton
@@ -311,7 +333,13 @@ export default function ModuleEdit() {
                     index={index}
                     name={`Quiz ${index + 1}`}
                     contentType="quiz"
+                    editTo={`/edit-module/${module.id}/edit-quiz/${quizId}`}
                     reordering={reorderingQuizzes}
+                    onDelete={() =>
+                      deleteContent((csrfToken) =>
+                        deleteQuiz(quizId, csrfToken),
+                      )
+                    }
                   />
                 ))}
               </div>

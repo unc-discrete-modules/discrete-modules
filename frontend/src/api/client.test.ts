@@ -2,20 +2,34 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SESSION_EXPIRED } from '@/api'
 import {
   ApiError,
+  createLesson,
   createModule,
+  createQuiz,
   deleteLesson,
   deleteModule,
   deleteQuiz,
+  getAdminLesson,
+  getAdminQuiz,
   getLesson,
   getModule,
   getQuiz,
+  listModuleLessons,
   listModules,
+  restoreLesson,
+  restoreQuiz,
   reorderLessons,
+  replaceQuiz,
   reorderModules,
   submitQuiz,
+  updateLesson,
   updateModule,
 } from './client'
-import type { Quiz, SubmissionRequest, SubmissionResult } from '@/types/types'
+import type {
+  Quiz,
+  QuizInput,
+  SubmissionRequest,
+  SubmissionResult,
+} from '@/types/types'
 
 const moduleSummary = {
   id: 1,
@@ -217,6 +231,281 @@ describe('learning API client', () => {
         credentials: 'same-origin',
       }),
     )
+  })
+
+  it('creates a lesson with the authenticated admin endpoint', async () => {
+    const created = {
+      id: 31,
+      module_id: 12,
+      key: 'proofs',
+      title: 'Proofs',
+      body: '## Hi',
+      video_url: null,
+      position: 2,
+      archived: false,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json(created))
+    vi.stubGlobal('fetch', fetch)
+    const lesson = {
+      key: 'proofs',
+      title: 'Proofs',
+      body: '## Hi',
+      video_url: null,
+    }
+
+    await expect(createLesson('csrf', 12, lesson)).resolves.toEqual(created)
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/modules/12/lessons',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': 'csrf',
+        },
+        body: JSON.stringify(lesson),
+        credentials: 'same-origin',
+      }),
+    )
+  })
+
+  it('lists a module’s lessons, including archived ones, for admins', async () => {
+    const row = {
+      id: 31,
+      module_id: 12,
+      key: 'proofs',
+      title: 'Proofs',
+      body: '## Hi',
+      video_url: null,
+      position: 0,
+      archived: true,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json([row]))
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(listModuleLessons(12, true)).resolves.toEqual([row])
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/modules/12/lessons?include_archived=true',
+      expect.objectContaining({ credentials: 'same-origin' }),
+    )
+  })
+
+  it('reads a lesson for editing, with its key and archived state', async () => {
+    const row = {
+      id: 31,
+      module_id: 12,
+      key: 'proofs',
+      title: 'Proofs',
+      body: '## Hi',
+      video_url: 'https://youtu.be/abc',
+      position: 0,
+      archived: false,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json(row))
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(getAdminLesson(31)).resolves.toEqual(row)
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/lessons/31',
+      expect.objectContaining({ credentials: 'same-origin' }),
+    )
+  })
+
+  it('rejects a lesson response that is missing its content', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          Response.json({ id: 31, key: 'proofs', title: 'Proofs' }),
+        ),
+    )
+
+    await expect(getAdminLesson(31)).rejects.toThrow(
+      'The server returned an invalid response',
+    )
+  })
+
+  it('updates a lesson, clearing its video when asked', async () => {
+    const row = {
+      id: 31,
+      module_id: 12,
+      key: 'proofs',
+      title: 'New',
+      body: 'Body',
+      video_url: null,
+      position: 0,
+      archived: true,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json(row))
+    vi.stubGlobal('fetch', fetch)
+    const changes = { title: 'New', body: 'Body', video_url: null }
+
+    await expect(updateLesson('csrf', 31, changes)).resolves.toEqual(row)
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/lessons/31',
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': 'csrf',
+        },
+        body: JSON.stringify(changes),
+      }),
+    )
+  })
+
+  it('restores an archived lesson', async () => {
+    const row = {
+      id: 31,
+      module_id: 12,
+      key: 'proofs',
+      title: 'Proofs',
+      body: 'Body',
+      video_url: null,
+      position: 0,
+      archived: false,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json(row))
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(restoreLesson('csrf', 31)).resolves.toEqual(row)
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/lessons/31/restore',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'X-CSRF-Token': 'csrf' },
+      }),
+    )
+  })
+
+  describe('admin quiz', () => {
+    const questions: QuizInput['questions'] = [
+      { key: 'a', type: 'fill_in_blank', prompt: 'A ____', answer: 'x' },
+    ]
+    const row = (archived: boolean) => ({
+      id: 5,
+      module_id: 12,
+      archived,
+      questions: [],
+    })
+
+    it('reads a module quiz, including an archived one', async () => {
+      const fetch = vi.fn().mockResolvedValue(Response.json(row(true)))
+      vi.stubGlobal('fetch', fetch)
+
+      await expect(getAdminQuiz(12, true)).resolves.toEqual(row(true))
+
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/admin/modules/12/quiz?include_archived=true',
+        expect.objectContaining({ credentials: 'same-origin' }),
+      )
+    })
+
+    it('rejects a saved quiz whose questions are missing their fields', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          Response.json({
+            id: 5,
+            module_id: 12,
+            archived: false,
+            questions: [{ id: 1, prompt: 'No key or type' }],
+          }),
+        ),
+      )
+
+      await expect(getAdminQuiz(12, true)).rejects.toThrow(
+        'The server returned an invalid response',
+      )
+    })
+
+    it('rejects with a 404 when the module has no quiz', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValue(
+            Response.json(
+              { error: { code: 'not_found', message: 'Quiz not found' } },
+              { status: 404 },
+            ),
+          ),
+      )
+
+      await expect(getAdminQuiz(12, true)).rejects.toMatchObject({
+        status: 404,
+      })
+    })
+
+    it.each([
+      [
+        'creates',
+        () => createQuiz('csrf', 12, { questions }),
+        'POST',
+        '/api/admin/modules/12/quiz',
+        true,
+      ],
+      [
+        'replaces',
+        () => replaceQuiz('csrf', 5, { questions }),
+        'PUT',
+        '/api/admin/quizzes/5',
+        true,
+      ],
+      [
+        'restores',
+        () => restoreQuiz('csrf', 5),
+        'POST',
+        '/api/admin/quizzes/5/restore',
+        false,
+      ],
+    ])(
+      '%s a quiz with the authenticated admin endpoint',
+      async (_name, call, method, path, hasBody) => {
+        const fetch = vi.fn().mockResolvedValue(Response.json(row(false)))
+        vi.stubGlobal('fetch', fetch)
+
+        await expect(call()).resolves.toEqual(row(false))
+
+        expect(fetch).toHaveBeenCalledWith(
+          path,
+          expect.objectContaining({
+            method,
+            headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf' }),
+            ...(hasBody ? { body: JSON.stringify({ questions }) } : {}),
+          }),
+        )
+      },
+    )
+  })
+
+  it('reports why a lesson could not be created', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json(
+          {
+            error: {
+              code: 'conflict',
+              message: 'Module is archived; restore it first',
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+    )
+
+    await expect(
+      createLesson('csrf', 12, { key: 'a', title: 'A', body: 'b' }),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: 'Module is archived; restore it first',
+    })
   })
 
   it('creates a module with the authenticated admin endpoint', async () => {

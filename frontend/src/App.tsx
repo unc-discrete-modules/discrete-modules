@@ -8,6 +8,9 @@ import { AuthProvider } from './context/auth-context'
 import RequireAuth from './components/RequireAuth'
 import Login from './pages/Login'
 import LessonCreation from './pages/LessonCreation'
+import QuizCreation from './pages/QuizCreation'
+import LessonEdit from './pages/LessonEdit'
+import QuizEdit from './pages/QuizEdit'
 import ModuleEdit from './pages/ModuleEdit'
 import AdminHome from './pages/AdminHome'
 import NotFound from './pages/NotFound'
@@ -34,10 +37,7 @@ function App() {
                   <Route path="*" element={<NotFound />} />
                   <Route path="/" element={<Home />} />
                   <Route path="/admin" element={<AdminHome />} />
-                  <Route
-                    path="/modules/:moduleId"
-                    element={<ModuleStart />}
-                  />
+                  <Route path="/modules/:moduleId" element={<ModuleStart />} />
                   <Route
                     path="/modules/:moduleId/lessons/:lessonId"
                     element={<Lesson />}
@@ -50,7 +50,22 @@ function App() {
                     path="/edit-module/:moduleId"
                     element={<ModuleEdit />}
                   />
-                  <Route path="/create-lesson" element={<LessonCreation />} />
+                  <Route
+                    path="/edit-module/:moduleId/edit-lesson/:lessonId"
+                    element={<LessonEdit />}
+                  />
+                  <Route
+                    path="/edit-module/:moduleId/edit-quiz/:quizId"
+                    element={<QuizEdit />}
+                  />
+                  <Route
+                    path="/edit-module/:moduleId/create-lesson"
+                    element={<LessonCreation />}
+                  />
+                  <Route
+                    path="/edit-module/:moduleId/create-quiz"
+                    element={<QuizCreation />}
+                  />
                 </Route>
               </Route>
             </Route>
