@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import CancelButton from './CancelButton'
-import CreateButton from './CreateButton'
+import { CreateFillButton } from './CreateButton'
 
 export type UploadedFile = { name: string; text: string }
 
@@ -109,7 +109,7 @@ export default function FileUploadForm({
         <Link to={cancelTo}>
           <CancelButton />
         </Link>
-        <CreateButton type="submit" disabled={!uploaded || !onCreate} />
+        <CreateFillButton type="submit" disabled={!uploaded || !onCreate} />
       </div>
     </form>
   )
