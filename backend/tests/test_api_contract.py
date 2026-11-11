@@ -21,6 +21,7 @@ def test_openapi_documents_every_contract_route():
     assert set(paths) == {
         "/api/",
         "/api/admin/modules",
+        "/api/admin/progress",
         "/api/admin/modules/order",
         "/api/admin/modules/{module_id}",
         "/api/admin/modules/{module_id}/restore",
