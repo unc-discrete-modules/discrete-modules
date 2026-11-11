@@ -129,7 +129,13 @@ export default function ContentUploadPage({
       {/* Both stay mounted so switching does not discard what was entered. */}
       {showBuilder && (
         <div hidden={mode !== 'build'}>
-          <Builder module={currentModule} csrfToken={csrfToken} />
+          <Builder
+            module={currentModule}
+            csrfToken={csrfToken}
+            onLessonAdded={(lesson) =>
+              setAddedLessons((lessons) => [...lessons, lesson])
+            }
+          />
         </div>
       )}
       <div hidden={showBuilder && mode !== 'upload'}>

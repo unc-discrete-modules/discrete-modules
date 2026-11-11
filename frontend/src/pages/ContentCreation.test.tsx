@@ -202,6 +202,7 @@ describe('content creation pages', () => {
       await screen.findByRole('heading', { name: 'Add lesson' }),
     ).toBeInTheDocument()
     expect(screen.getByText('to Discrete Math')).toBeInTheDocument()
+    await switchToUpload()
     expect(screen.getByLabelText('Lesson file')).toHaveAttribute(
       'accept',
       '.md',
@@ -237,7 +238,8 @@ describe('content creation pages', () => {
     )
     renderPage('/edit-module/12/create-lesson', 'admin')
 
-    fireEvent.change(await screen.findByLabelText('Lesson file'), {
+    await switchToUpload()
+    fireEvent.change(screen.getByLabelText('Lesson file'), {
       target: {
         files: [
           new File(
@@ -265,7 +267,8 @@ describe('content creation pages', () => {
     const fetchMock = stubLessonApi()
     renderPage('/edit-module/12/create-lesson', 'admin')
 
-    fireEvent.change(await screen.findByLabelText('Lesson file'), {
+    await switchToUpload()
+    fireEvent.change(screen.getByLabelText('Lesson file'), {
       target: { files: [lessonFile('Intro', '01-intro.md')] },
     })
     expect(
@@ -309,7 +312,8 @@ describe('content creation pages', () => {
     })
     renderPage('/edit-module/12/create-lesson', 'admin')
 
-    fireEvent.change(await screen.findByLabelText('Lesson file'), {
+    await switchToUpload()
+    fireEvent.change(screen.getByLabelText('Lesson file'), {
       target: { files: [lessonFile('Edited title', '01-intro.md')] },
     })
     await screen.findByRole('region', { name: 'Preview' })
@@ -338,7 +342,8 @@ describe('content creation pages', () => {
     const fetchMock = stubLessonApi({ existing: [lessonRow()] })
     renderPage('/edit-module/12/create-lesson', 'admin')
 
-    fireEvent.change(await screen.findByLabelText('Lesson file'), {
+    await switchToUpload()
+    fireEvent.change(screen.getByLabelText('Lesson file'), {
       target: { files: [lessonFile('Intro', '01-intro.md')] },
     })
     await screen.findByRole('region', { name: 'Preview' })
@@ -354,7 +359,8 @@ describe('content creation pages', () => {
     const fetchMock = stubLessonApi()
     renderPage('/edit-module/12/create-lesson', 'admin')
 
-    fireEvent.change(await screen.findByLabelText('Lesson file'), {
+    await switchToUpload()
+    fireEvent.change(screen.getByLabelText('Lesson file'), {
       target: {
         files: [new File(['---\ntitle: A\n---\n\nBody'], 'My Lesson.md')],
       },
@@ -374,7 +380,8 @@ describe('content creation pages', () => {
     })
     renderPage('/edit-module/12/create-lesson', 'admin')
 
-    fireEvent.change(await screen.findByLabelText('Lesson file'), {
+    await switchToUpload()
+    fireEvent.change(screen.getByLabelText('Lesson file'), {
       target: { files: [lessonFile('A', '01-a.md')] },
     })
     await screen.findByRole('region', { name: 'Preview' })
@@ -538,14 +545,142 @@ describe('content creation pages', () => {
     expect(screen.getByLabelText('Quiz file')).toBeVisible()
   })
 
-  it('has no editor switch for lessons, which are only uploaded', async () => {
+  it('offers writing the lesson in the editor or uploading a file', async () => {
     stubLessonApi()
     renderPage('/edit-module/12/create-lesson', 'admin')
 
-    expect(await screen.findByLabelText('Lesson file')).toBeVisible()
+    const build = await screen.findByRole('button', {
+      name: 'Build in the editor',
+    })
+    const upload = screen.getByRole('button', { name: 'Upload a file' })
+    expect(build).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('form', { name: 'Lesson builder' })).toBeVisible()
+
+    fireEvent.click(upload)
+
+    expect(upload).toHaveAttribute('aria-pressed', 'true')
     expect(
-      screen.queryByRole('button', { name: 'Build in the editor' }),
+      screen.queryByRole('form', { name: 'Lesson builder' }),
     ).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Lesson file')).toBeVisible()
+  })
+
+  it('keeps what was written when switching to upload and back', async () => {
+    stubLessonApi()
+    renderPage('/edit-module/12/create-lesson', 'admin')
+    fireEvent.change(await screen.findByLabelText('Title'), {
+      target: { value: 'Draft title' },
+    })
+
+    await switchToUpload()
+    fireEvent.click(screen.getByRole('button', { name: 'Build in the editor' }))
+
+    expect(screen.getByLabelText('Title')).toHaveValue('Draft title')
+  })
+
+  it('writes a lesson, saves it, and numbers the next one after it', async () => {
+    const fetchMock = stubLessonApi({
+      create: () =>
+        Response.json(lessonRow({ key: 'proofs', title: 'Proofs' }), {
+          status: 201,
+        }),
+    })
+    renderPage('/edit-module/12/create-lesson', 'admin')
+    const form = await screen.findByRole('form', { name: 'Lesson builder' })
+    const field = (name: string) => within(form).getByLabelText(name)
+
+    fireEvent.change(field('Title'), { target: { value: 'Proofs' } })
+    fireEvent.change(field('Lesson'), {
+      target: { value: '## Welcome\n\nWe prove $x^2$ is odd.' },
+    })
+    expect(
+      await within(form).findByRole('heading', {
+        level: 1,
+        name: 'Module 12: Lesson 1 - Proofs',
+      }),
+    ).toBeInTheDocument()
+    fireEvent.click(within(form).getByRole('button', { name: /create/i }))
+
+    expect(await within(form).findByRole('status')).toHaveTextContent(
+      'Created "Proofs".',
+    )
+    const init = fetchMock.mock.calls.find(
+      ([, init]) => init?.method === 'POST',
+    )?.[1]
+    expect(fetchMock.mock.calls.find(([, i]) => i === init)?.[0]).toBe(
+      '/api/admin/modules/12/lessons',
+    )
+    expect(init?.headers).toMatchObject({ 'X-CSRF-Token': 'csrf-token' })
+    expect(JSON.parse(init?.body as string)).toEqual({
+      key: 'proofs',
+      title: 'Proofs',
+      body: '## Welcome\n\nWe prove $x^2$ is odd.',
+      video_url: null,
+    })
+
+    fireEvent.change(field('Title'), { target: { value: 'Next' } })
+    fireEvent.change(field('Lesson'), { target: { value: '## More' } })
+    expect(
+      await within(form).findByRole('heading', {
+        level: 1,
+        name: 'Module 12: Lesson 2 - Next',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('brings back a deleted lesson that has the same key', async () => {
+    const fetchMock = stubLessonApi({
+      existing: [lessonRow({ archived: true, title: 'Old', body: 'Old' })],
+    })
+    renderPage('/edit-module/12/create-lesson', 'admin')
+    const form = await screen.findByRole('form', { name: 'Lesson builder' })
+
+    fireEvent.change(within(form).getByLabelText('Title'), {
+      target: { value: 'Intro' },
+    })
+    fireEvent.change(within(form).getByLabelText('Lesson'), {
+      target: { value: '## Rewritten' },
+    })
+    fireEvent.click(within(form).getByRole('button', { name: /create/i }))
+
+    expect(await within(form).findByRole('status')).toBeInTheDocument()
+    expect(writes(fetchMock)).toEqual([
+      ['PATCH', '/api/admin/lessons/31'],
+      ['POST', '/api/admin/lessons/31/restore'],
+    ])
+  })
+
+  it('tells the admin to choose another key when one is in use', async () => {
+    const fetchMock = stubLessonApi({ existing: [lessonRow()] })
+    renderPage('/edit-module/12/create-lesson', 'admin')
+    const form = await screen.findByRole('form', { name: 'Lesson builder' })
+
+    fireEvent.change(within(form).getByLabelText('Title'), {
+      target: { value: 'Intro' },
+    })
+    fireEvent.change(within(form).getByLabelText('Lesson'), {
+      target: { value: '## Hi' },
+    })
+    fireEvent.click(within(form).getByRole('button', { name: /create/i }))
+
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'already has a lesson with the key "intro". Choose a different key.',
+    )
+    expect(within(form).getByLabelText('Title')).toHaveValue('Intro')
+    expect(writes(fetchMock)).toEqual([])
+  })
+
+  it('does not call the API for an incomplete lesson', async () => {
+    const fetchMock = stubLessonApi()
+    renderPage('/edit-module/12/create-lesson', 'admin')
+    const form = await screen.findByRole('form', { name: 'Lesson builder' })
+
+    fireEvent.click(within(form).getByRole('button', { name: /create/i }))
+
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'Fix the highlighted fields.',
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('keeps what was built when switching to upload and back', async () => {

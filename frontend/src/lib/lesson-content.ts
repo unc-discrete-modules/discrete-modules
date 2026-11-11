@@ -45,14 +45,29 @@ const MAX_KEY_LENGTH = 100
 // than rewritten.
 export function lessonKeyFromFileName(fileName: string): string | null {
   const key = fileName.replace(/\.md$/i, '').replace(/^\d+-/, '')
-  return KEY.test(key) && key.length <= MAX_KEY_LENGTH ? key : null
+  return isLessonKey(key) ? key : null
+}
+
+export function isLessonKey(key: string): boolean {
+  return KEY.test(key) && key.length <= MAX_KEY_LENGTH
+}
+
+// A suggestion for a lesson written in the editor, where the title is typed
+// first: "Proofs, Continued!" becomes "proofs-continued". Empty if the title
+// has no letters or numbers.
+export function lessonKeyFromTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .slice(0, MAX_KEY_LENGTH)
+    .replace(/^-+|-+$/g, '')
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function isHttpUrl(value: unknown): value is string {
+export function isHttpUrl(value: unknown): value is string {
   if (typeof value !== 'string') return false
   try {
     const { protocol } = new URL(value)

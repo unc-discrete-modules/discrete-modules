@@ -1,42 +1,14 @@
-/** Page where an admin adds a lesson to a module from a Markdown file. */
+/** Page where an admin adds a lesson to a module, written in the editor or from a Markdown file. */
 
 import ContentUploadPage from '@/components/admin/ContentUploadPage'
+import LessonBuilder from '@/components/admin/LessonBuilder'
 import LessonPreview from '@/components/admin/LessonPreview'
-import type { CreateContent } from '@/components/admin/upload-types'
-import {
-  createLesson,
-  listModuleLessons,
-  restoreLesson,
-  updateLesson,
-} from '@/api/client'
-import type { LessonInput } from '@/types/types'
+import type {
+  BuilderProps,
+  CreateContent,
+} from '@/components/admin/upload-types'
 import { lessonKeyFromFileName, parseLessonFile } from '@/lib/lesson-content'
-
-// Deleted lessons are only archived and keep their key, so uploading a file
-// with that key brings the lesson back with the file's content, which is how
-// an edited file is added again. The content is saved before the lesson is
-// restored, so a failure part-way leaves it archived and a retry finishes it.
-async function addLesson(
-  csrfToken: string,
-  moduleId: number,
-  lesson: LessonInput,
-) {
-  const lessons = await listModuleLessons(moduleId, true)
-  const existing = lessons.find((item) => item.key === lesson.key)
-  if (!existing) return createLesson(csrfToken, moduleId, lesson)
-
-  if (!existing.archived) {
-    throw new Error(
-      `This module already has a lesson with the key "${lesson.key}". Rename the file to add a new lesson.`,
-    )
-  }
-  await updateLesson(csrfToken, existing.id, {
-    title: lesson.title,
-    body: lesson.body,
-    video_url: lesson.video_url,
-  })
-  return restoreLesson(csrfToken, existing.id)
-}
+import { saveLesson } from '@/lib/lesson-save'
 
 const createLessonFromFile: CreateContent = async (
   file,
@@ -53,13 +25,40 @@ const createLessonFromFile: CreateContent = async (
   }
 
   const { lesson } = parsed
-  const created = await addLesson(csrfToken, module.id, {
-    key,
-    title: lesson.title,
-    body: lesson.body,
-    video_url: lesson.videoUrl,
-  })
+  const created = await saveLesson(
+    csrfToken,
+    module.id,
+    {
+      key,
+      title: lesson.title,
+      body: lesson.body,
+      video_url: lesson.videoUrl,
+    },
+    'Rename the file to add a new lesson.',
+  )
   return { id: created.id, title: created.title }
+}
+
+function LessonBuilderPanel({
+  module,
+  csrfToken,
+  onLessonAdded,
+}: BuilderProps) {
+  return (
+    <LessonBuilder
+      module={module}
+      cancelTo={`/edit-module/${module.id}`}
+      onSave={async (lesson) => {
+        const created = await saveLesson(
+          csrfToken,
+          module.id,
+          lesson,
+          'Choose a different key.',
+        )
+        onLessonAdded({ id: created.id, title: created.title })
+      }}
+    />
+  )
 }
 
 export default function LessonCreation() {
@@ -69,6 +68,7 @@ export default function LessonCreation() {
       extensions={['.md']}
       formatHint="A Markdown file that starts with a front matter block containing a title and an optional video_url."
       Preview={LessonPreview}
+      Builder={LessonBuilderPanel}
       onCreate={createLessonFromFile}
     />
   )

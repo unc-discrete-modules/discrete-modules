@@ -24,4 +24,7 @@ export type CreateContent = (
 export type BuilderProps = {
   module: Module
   csrfToken: string
+  // Reports a lesson the editor added, so the page's view of the module stays
+  // current without refetching it.
+  onLessonAdded: (lesson: LessonSummary) => void
 }
