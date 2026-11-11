@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: discrete-modules
 data:
   ALLOWED_ORIGINS: '["https://discrete-modules.apps.cloudapps.unc.edu"]'
-  ADMIN_EMAILS: '[]'
+  ADMIN_EMAILS: '["cagrella@unc.edu", "ppan1229@unc.edu", "savvlin@unc.edu", "hyyu@unc.edu"]'
   ENVIRONMENT: production
   CONTENT_DIR: /content
   PUBLIC_ORIGIN: https://discrete-modules.apps.cloudapps.unc.edu
@@ -15,3 +15,5 @@ data:
   SAML_SP_CERTIFICATE_PATH: /var/run/saml/sp.crt
   SAML_SP_PRIVATE_KEY_PATH: /var/run/saml/sp.key
   SAML_EMAIL_SOURCE: nameid
+  SAML_ONYEN_ATTRIBUTE: urn:oid:0.9.2342.19200300.100.1.1
+  SAML_DISPLAY_NAME_ATTRIBUTE: urn:oid:2.5.4.42

@@ -166,7 +166,8 @@ $$
 &= \gcd(12,\ 18 \bmod 12) &= \gcd(12, 6)\\
 &= \gcd(6,\ 12 \bmod 6) &= \gcd(6, 0)\\
 &= 6
-\end{align*}$$
+\end{align*}
+$$
 
 ## Worked Example: $\gcd(35, 13)$
 
