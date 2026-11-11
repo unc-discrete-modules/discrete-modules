@@ -1,5 +1,11 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import FileUploadForm from './FileUploadForm'
@@ -9,7 +15,9 @@ function Preview({ file }: PreviewProps) {
   return <p>Previewing {file.name}</p>
 }
 
-function renderForm(onCreate?: (file: UploadedFile) => void) {
+function renderForm(
+  onCreate?: (file: UploadedFile) => Promise<unknown> | void,
+) {
   return render(
     <MemoryRouter>
       <FileUploadForm
@@ -120,6 +128,71 @@ describe('FileUploadForm', () => {
     })
 
     expect(screen.queryByText('Previewing intro.md')).not.toBeInTheDocument()
+  })
+
+  it('confirms a created file, clears the form, and allows another', async () => {
+    const onCreate = vi.fn().mockResolvedValue(undefined)
+    renderForm(onCreate)
+    choose(new File(['# One'], 'one.md'))
+    await screen.findByText('Previewing one.md')
+
+    fireEvent.click(screen.getByRole('button', { name: /create/i }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Created one.md.',
+    )
+    expect(screen.queryByText('Previewing one.md')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Lesson file')).toHaveValue('')
+    expect(screen.getByRole('button', { name: /create/i })).toBeDisabled()
+
+    choose(new File(['# Two'], 'two.md'))
+    await screen.findByText('Previewing two.md')
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /create/i })).toBeEnabled()
+  })
+
+  it('shows why creating failed and keeps the file for another try', async () => {
+    const onCreate = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('A lesson with this key exists.'))
+      .mockResolvedValueOnce(undefined)
+    renderForm(onCreate)
+    choose(new File(['# One'], 'one.md'))
+    await screen.findByText('Previewing one.md')
+
+    fireEvent.click(screen.getByRole('button', { name: /create/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'A lesson with this key exists.',
+    )
+    expect(screen.getByText('Previewing one.md')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /create/i }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Created one.md.',
+    )
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('does not send the file twice while a create is in flight', async () => {
+    let finish: () => void = () => {}
+    const onCreate = vi.fn(
+      () => new Promise<void>((resolve) => (finish = resolve)),
+    )
+    renderForm(onCreate)
+    choose(new File(['# One'], 'one.md'))
+    await screen.findByText('Previewing one.md')
+    const create = screen.getByRole('button', { name: /create/i })
+
+    fireEvent.click(create)
+    await waitFor(() => expect(create).toBeDisabled())
+    fireEvent.submit(create.closest('form') as HTMLFormElement)
+
+    expect(onCreate).toHaveBeenCalledTimes(1)
+    finish()
+    await screen.findByRole('status')
   })
 
   it('links Cancel back to the module editor', () => {

@@ -1,26 +1,36 @@
 /** Form for choosing a content file and previewing it before it is created. */
 
-import { useId, useState, type ChangeEvent, type SubmitEvent } from 'react'
+import {
+  useId,
+  useState,
+  type ChangeEvent,
+  type ComponentType,
+  type SubmitEvent,
+} from 'react'
 import { Link } from 'react-router-dom'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import CancelButton from './CancelButton'
+import type { Module } from '@/types/types'
 import { CreateFillButton } from './CreateButton'
-
-export type UploadedFile = { name: string; text: string }
+import RawTextPreview from './RawTextPreview'
+import type { PreviewProps, UploadedFile } from './upload-types'
 
 // Files are read into memory in the browser, so a size cap keeps a wrong
 // pick from freezing the page. Lessons and quizzes are far smaller.
 const MAX_FILE_BYTES = 1_000_000
-const PREVIEW_CHARACTERS = 2_000
 
 type FileUploadFormProps = {
   fileLabel: string
   extensions: string[]
   formatHint: string
   cancelTo: string
-  // Create stays disabled until the page supplies a handler.
-  onCreate?: (file: UploadedFile) => void
+  // How the chosen file is shown; plain text unless the content has a richer view.
+  Preview?: ComponentType<PreviewProps>
+  module?: Module
+  // Create stays disabled until the page supplies a handler. A rejection's
+  // message is shown to the user.
+  onCreate?: (file: UploadedFile) => Promise<unknown> | void
 }
 
 export default function FileUploadForm({
@@ -28,16 +38,25 @@ export default function FileUploadForm({
   extensions,
   formatHint,
   cancelTo,
+  Preview = RawTextPreview,
+  module,
   onCreate,
 }: FileUploadFormProps) {
   const inputId = useId()
   const [uploaded, setUploaded] = useState<UploadedFile | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  // Changing the key remounts the input, which is how a file input is cleared.
+  const [inputKey, setInputKey] = useState(0)
 
   async function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     setUploaded(null)
     setError(null)
+    setSubmitError(null)
+    setNotice(null)
     if (!file) return
 
     const name = file.name.toLowerCase()
@@ -57,16 +76,31 @@ export default function FileUploadForm({
     }
   }
 
-  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (uploaded && onCreate) onCreate(uploaded)
+    if (!uploaded || !onCreate || submitting) return
+
+    setSubmitting(true)
+    setSubmitError(null)
+    setNotice(null)
+    try {
+      await onCreate(uploaded)
+      setNotice(`Created ${uploaded.name}.`)
+      setUploaded(null)
+      setInputKey((key) => key + 1)
+    } catch (reason) {
+      setSubmitError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not create this. Please try again.',
+      )
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  const truncated =
-    uploaded !== null && uploaded.text.length > PREVIEW_CHARACTERS
-
   return (
-    <form onSubmit={handleSubmit} className="max-w-3xl space-y-5">
+    <form onSubmit={handleSubmit} className="max-w-4xl space-y-5">
       <div className="space-y-2">
         <Label htmlFor={inputId} className="text-lg font-bold text-muted-navy">
           {fileLabel}
@@ -75,6 +109,7 @@ export default function FileUploadForm({
           {formatHint}
         </p>
         <Input
+          key={inputKey}
           id={inputId}
           type="file"
           accept={extensions.join(',')}
@@ -91,25 +126,37 @@ export default function FileUploadForm({
       </div>
 
       {uploaded && (
-        <div className="space-y-2">
-          <p className="font-bold text-muted-navy">{uploaded.name}</p>
-          <pre
-            aria-label="File preview"
-            tabIndex={0}
-            className="max-h-64 overflow-auto rounded-sm border-3 border-stone-200 bg-white p-3 text-sm whitespace-pre-wrap"
+        <section aria-labelledby={`${inputId}-preview`} className="space-y-2">
+          <h2
+            id={`${inputId}-preview`}
+            className="text-lg font-bold text-muted-navy"
           >
-            {truncated
-              ? `${uploaded.text.slice(0, PREVIEW_CHARACTERS)}\n…`
-              : uploaded.text}
-          </pre>
-        </div>
+            Preview
+          </h2>
+          <p className="text-sm text-muted-foreground">{uploaded.name}</p>
+          <Preview file={uploaded} module={module} />
+        </section>
+      )}
+
+      {notice && (
+        <p role="status" className="text-sm font-bold text-muted-navy">
+          {notice}
+        </p>
+      )}
+      {submitError && (
+        <p role="alert" className="text-sm text-red-700">
+          {submitError}
+        </p>
       )}
 
       <div className="flex gap-3">
         <Link to={cancelTo}>
           <CancelButton />
         </Link>
-        <CreateFillButton type="submit" disabled={!uploaded || !onCreate} />
+        <CreateFillButton
+          type="submit"
+          disabled={!uploaded || !onCreate || submitting}
+        />
       </div>
     </form>
   )

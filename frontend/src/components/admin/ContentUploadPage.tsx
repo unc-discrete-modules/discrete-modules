@@ -1,24 +1,33 @@
 /** Admin page for adding a lesson or quiz to a module from a content file. */
 
+import { useState, type ComponentType } from 'react'
 import { useParams } from 'react-router-dom'
 import { ErrorState, LoadingState } from '@/components/RequestState'
 import { useAuth } from '@/context/auth-context-value'
 import { useModule } from '@/hooks/use-modules'
 import NoAccess from '@/pages/NoAccess'
 import FileUploadForm from './FileUploadForm'
+import type { LessonSummary } from '@/types/types'
+import type { CreateLesson, PreviewProps, UploadedFile } from './upload-types'
 
 type ContentUploadPageProps = {
   contentName: 'lesson' | 'quiz'
   extensions: string[]
   formatHint: string
+  Preview?: ComponentType<PreviewProps>
+  // Create stays disabled until the page supplies a handler.
+  onCreate?: CreateLesson
 }
 
 export default function ContentUploadPage({
   contentName,
   extensions,
   formatHint,
+  Preview,
+  onCreate,
 }: ContentUploadPageProps) {
   const { state: authState } = useAuth()
+  const [addedLessons, setAddedLessons] = useState<LessonSummary[]>([])
   const { moduleId } = useParams()
   const numericModuleId = Number(moduleId)
   const isAdmin = authState.user?.role === 'admin'
@@ -42,6 +51,24 @@ export default function ContentUploadPage({
     )
   }
 
+  // Lessons added on this page are not in the fetched module, but the preview
+  // numbers the next lesson from it.
+  const currentModule = {
+    ...module,
+    lessons: [...module.lessons, ...addedLessons],
+  }
+
+  async function handleCreate(file: UploadedFile) {
+    if (!onCreate || authState.status !== 'authenticated') {
+      throw new Error('Your session has expired. Please sign in again.')
+    }
+    const lesson = await onCreate(file, {
+      module: currentModule,
+      csrfToken: authState.user.csrf_token,
+    })
+    setAddedLessons((lessons) => [...lessons, lesson])
+  }
+
   return (
     <div className="mx-10">
       <div className="py-5">
@@ -55,6 +82,9 @@ export default function ContentUploadPage({
         extensions={extensions}
         formatHint={formatHint}
         cancelTo={`/edit-module/${module.id}`}
+        Preview={Preview}
+        module={currentModule}
+        onCreate={onCreate ? handleCreate : undefined}
       />
     </div>
   )

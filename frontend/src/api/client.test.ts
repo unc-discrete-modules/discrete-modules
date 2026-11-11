@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SESSION_EXPIRED } from '@/api'
 import {
   ApiError,
+  createLesson,
   createModule,
   deleteLesson,
   deleteModule,
@@ -217,6 +218,66 @@ describe('learning API client', () => {
         credentials: 'same-origin',
       }),
     )
+  })
+
+  it('creates a lesson with the authenticated admin endpoint', async () => {
+    const created = {
+      id: 31,
+      module_id: 12,
+      key: 'proofs',
+      title: 'Proofs',
+      body: '## Hi',
+      video_url: null,
+      position: 2,
+      archived: false,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json(created))
+    vi.stubGlobal('fetch', fetch)
+    const lesson = {
+      key: 'proofs',
+      title: 'Proofs',
+      body: '## Hi',
+      video_url: null,
+    }
+
+    await expect(createLesson('csrf', 12, lesson)).resolves.toEqual(created)
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/modules/12/lessons',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': 'csrf',
+        },
+        body: JSON.stringify(lesson),
+        credentials: 'same-origin',
+      }),
+    )
+  })
+
+  it('reports why a lesson could not be created', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json(
+          {
+            error: {
+              code: 'conflict',
+              message: 'Module is archived; restore it first',
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+    )
+
+    await expect(
+      createLesson('csrf', 12, { key: 'a', title: 'A', body: 'b' }),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: 'Module is archived; restore it first',
+    })
   })
 
   it('creates a module with the authenticated admin endpoint', async () => {

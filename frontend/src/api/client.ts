@@ -2,6 +2,8 @@ import { apiFetch } from '@/api'
 import type {
   ErrorResponse,
   Lesson,
+  LessonInput,
+  LessonResponse,
   Module,
   ModuleResponse,
   ModuleSummary,
@@ -72,6 +74,16 @@ function isModuleResponse(value: unknown): value is ModuleResponse {
     typeof value.key === 'string' &&
     typeof value.title === 'string' &&
     typeof value.description === 'string' &&
+    typeof value.position === 'number'
+  )
+}
+
+function isLessonResponse(value: unknown): value is LessonResponse {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'number' &&
+    typeof value.key === 'string' &&
+    typeof value.title === 'string' &&
     typeof value.position === 'number'
   )
 }
@@ -238,6 +250,25 @@ export function createModule(
       body: JSON.stringify(body),
     },
     isModuleResponse,
+  )
+}
+
+export function createLesson(
+  csrfToken: string,
+  moduleId: number,
+  lesson: LessonInput,
+): Promise<LessonResponse> {
+  return requestJson(
+    `/admin/modules/${moduleId}/lessons`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify(lesson),
+    },
+    isLessonResponse,
   )
 }
 
