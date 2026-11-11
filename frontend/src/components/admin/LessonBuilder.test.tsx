@@ -220,4 +220,47 @@ describe('LessonBuilder', () => {
       '/edit-module/9',
     )
   })
+
+  it('locks every field while saving so nothing typed is lost, then unlocks', async () => {
+    let fail: (reason: Error) => void = () => {}
+    const onSave = vi.fn(
+      () => new Promise<void>((_resolve, reject) => (fail = reject)),
+    )
+    renderBuilder(onSave)
+    fillLesson('Keep me')
+    const fields = [
+      'Title',
+      'Lesson key',
+      'Video link (optional)',
+      'Lesson',
+    ].map((label) => screen.getByLabelText(label))
+    fields.forEach((input) => expect(input).toBeEnabled())
+
+    fireEvent.click(create())
+    await waitFor(() => expect(create()).toBeDisabled())
+
+    fields.forEach((input) => expect(input).toBeDisabled())
+    // A rejected save leaves the draft for another try, and it is editable.
+    fail(new Error('Could not save'))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save')
+    fields.forEach((input) => expect(input).toBeEnabled())
+    expect(screen.getByLabelText('Title')).toHaveValue('Keep me')
+  })
+
+  it('clears the form for the next lesson once the save finishes, with the fields open again', async () => {
+    let finish: () => void = () => {}
+    const onSave = vi.fn(
+      () => new Promise<void>((resolve) => (finish = resolve)),
+    )
+    renderBuilder(onSave)
+    fillLesson()
+
+    fireEvent.click(create())
+    await waitFor(() => expect(screen.getByLabelText('Title')).toBeDisabled())
+    finish()
+
+    expect(await screen.findByRole('status')).toBeInTheDocument()
+    expect(screen.getByLabelText('Title')).toBeEnabled()
+    expect(screen.getByLabelText('Title')).toHaveValue('')
+  })
 })

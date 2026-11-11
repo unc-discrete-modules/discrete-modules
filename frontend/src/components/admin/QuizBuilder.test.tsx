@@ -258,4 +258,26 @@ describe('QuizBuilder', () => {
       '/edit-module/3',
     )
   })
+
+  it('locks the questions while saving, and unlocks them if saving fails', async () => {
+    let fail: (reason: Error) => void = () => {}
+    const onSave = vi.fn(
+      () => new Promise<void>((_resolve, reject) => (fail = reject)),
+    )
+    renderBuilder(onSave)
+    fillChoice(1, 'Keep this')
+    const create = screen.getByRole('button', { name: /create/i })
+
+    fireEvent.click(create)
+    await waitFor(() => expect(create).toBeDisabled())
+
+    expect(question(1).getByLabelText('Question text')).toBeDisabled()
+    expect(question(1).getByLabelText('Option 1 text')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Free response' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Reorder' })).toBeDisabled()
+    fail(new Error('Could not save'))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save')
+    expect(question(1).getByLabelText('Question text')).toBeEnabled()
+    expect(question(1).getByLabelText('Question text')).toHaveValue('Keep this')
+  })
 })

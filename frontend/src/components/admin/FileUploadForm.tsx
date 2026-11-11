@@ -70,8 +70,11 @@ export default function FileUploadForm({
     }
 
     try {
-      setUploaded({ name: file.name, text: await file.text() })
+      const text = await file.text()
+      if (event.target.files?.[0] !== file) return
+      setUploaded({ name: file.name, text })
     } catch {
+      if (event.target.files?.[0] !== file) return
       setError('Could not read that file. Please try again.')
     }
   }
@@ -116,6 +119,7 @@ export default function FileUploadForm({
           aria-describedby={`${inputId}-hint`}
           aria-invalid={error !== null}
           className="h-auto cursor-pointer rounded-sm border-3 border-stone-200 bg-white py-2 file:mr-3 file:h-8 file:cursor-pointer file:rounded-md file:border-3 file:border-light-blue file:bg-lightest-blue file:px-3 file:text-muted-navy"
+          disabled={submitting}
           onChange={handleChange}
         />
         {error && (

@@ -456,4 +456,52 @@ describe('QuizEditor', () => {
     })
     expect(closing()).toBe(true)
   })
+
+  it('locks the questions while saving, so edits made meanwhile are not replaced', async () => {
+    let finish: () => void = () => {}
+    const fetchMock = vi.fn<typeof fetch>(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = () => resolve(stored(JSON.parse('{"questions":[]}')))
+        }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    renderEditor()
+    fireEvent.change(question(2).getByLabelText('Correct answer'), {
+      target: { value: 'one' },
+    })
+
+    fireEvent.click(save())
+    await waitFor(() => expect(save()).toBeDisabled())
+
+    expect(question(1).getByLabelText('Question text')).toBeDisabled()
+    expect(question(2).getByLabelText('Correct answer')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Reorder' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Remove question 1' }),
+    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Free response' })).toBeDisabled()
+    finish()
+    await screen.findByRole('status')
+    expect(screen.getByRole('button', { name: 'Free response' })).toBeEnabled()
+  })
+
+  it('unlocks the questions when saving fails, with the edits kept', async () => {
+    stubSave(() =>
+      Response.json(
+        { error: { code: 'not_found', message: 'Quiz 5 not found' } },
+        { status: 404 },
+      ),
+    )
+    renderEditor()
+    fireEvent.change(question(2).getByLabelText('Correct answer'), {
+      target: { value: 'Keep me' },
+    })
+
+    fireEvent.click(save())
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(question(2).getByLabelText('Correct answer')).toBeEnabled()
+    expect(question(2).getByLabelText('Correct answer')).toHaveValue('Keep me')
+  })
 })
