@@ -406,6 +406,24 @@ describe('learning API client', () => {
       )
     })
 
+    it('rejects a saved quiz whose questions are missing their fields', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          Response.json({
+            id: 5,
+            module_id: 12,
+            archived: false,
+            questions: [{ id: 1, prompt: 'No key or type' }],
+          }),
+        ),
+      )
+
+      await expect(getAdminQuiz(12, true)).rejects.toThrow(
+        'The server returned an invalid response',
+      )
+    })
+
     it('rejects with a 404 when the module has no quiz', async () => {
       vi.stubGlobal(
         'fetch',

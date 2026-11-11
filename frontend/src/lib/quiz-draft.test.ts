@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import type { AdminQuiz } from '@/types/types'
 import {
   MAX_OPTIONS,
   createOption,
   createQuestion,
+  draftsFromQuiz,
+  firstInvalidQuestion,
   questionProblems,
+  quizSnapshot,
   toQuizInput,
   type DraftQuestion,
 } from './quiz-draft'
@@ -166,5 +170,132 @@ describe('toQuizInput', () => {
       a.id,
       b.id,
     ])
+  })
+})
+
+const saved: AdminQuiz = {
+  id: 5,
+  module_id: 9,
+  archived: false,
+  questions: [
+    {
+      id: 1,
+      key: 'pick',
+      type: 'multiple_choice',
+      prompt: 'Which?',
+      answer: null,
+      archived: false,
+      options: [
+        { text: 'One', correct: false },
+        { text: 'Two', correct: true },
+      ],
+    },
+    {
+      id: 2,
+      key: 'blank',
+      type: 'fill_in_blank',
+      prompt: 'A ____',
+      answer: 'x',
+      archived: false,
+      options: null,
+    },
+    {
+      id: 3,
+      key: 'gone',
+      type: 'free_response',
+      prompt: 'Removed',
+      answer: 'y',
+      archived: true,
+      options: null,
+    },
+  ],
+}
+
+describe('draftsFromQuiz', () => {
+  it('turns a saved quiz into drafts that keep each question key', () => {
+    const drafts = draftsFromQuiz(saved)
+
+    expect(drafts.map((d) => d.id)).toEqual(['pick', 'blank'])
+    expect(drafts[0]).toMatchObject({
+      type: 'multiple_choice',
+      prompt: 'Which?',
+      answer: '',
+    })
+    expect(
+      drafts[0].options.map(({ text, correct }) => ({ text, correct })),
+    ).toEqual([
+      { text: 'One', correct: false },
+      { text: 'Two', correct: true },
+    ])
+    expect(drafts[1]).toMatchObject({ answer: 'x', options: [] })
+  })
+
+  it('skips archived questions', () => {
+    expect(draftsFromQuiz(saved).map((d) => d.id)).not.toContain('gone')
+  })
+
+  it('gives options distinct ids for the screen', () => {
+    const ids = draftsFromQuiz(saved)[0].options.map((o) => o.id)
+
+    expect(new Set(ids).size).toBe(2)
+  })
+
+  it('round-trips to the same API body', () => {
+    expect(toQuizInput(draftsFromQuiz(saved))).toEqual({
+      questions: [
+        {
+          key: 'pick',
+          type: 'multiple_choice',
+          prompt: 'Which?',
+          options: [
+            { text: 'One', correct: false },
+            { text: 'Two', correct: true },
+          ],
+        },
+        { key: 'blank', type: 'fill_in_blank', prompt: 'A ____', answer: 'x' },
+      ],
+    })
+  })
+})
+
+describe('quizSnapshot', () => {
+  it('is the same for drafts that would be saved the same', () => {
+    expect(quizSnapshot(draftsFromQuiz(saved))).toBe(
+      quizSnapshot(draftsFromQuiz(saved)),
+    )
+  })
+
+  it('changes with the content, the order and the answer key', () => {
+    const base = draftsFromQuiz(saved)
+    const original = quizSnapshot(base)
+
+    expect(quizSnapshot([{ ...base[0], prompt: 'Changed' }, base[1]])).not.toBe(
+      original,
+    )
+    expect(quizSnapshot([base[1], base[0]])).not.toBe(original)
+    expect(
+      quizSnapshot([
+        {
+          ...base[0],
+          options: base[0].options.map((o) => ({ ...o, correct: !o.correct })),
+        },
+        base[1],
+      ]),
+    ).not.toBe(original)
+  })
+})
+
+describe('firstInvalidQuestion', () => {
+  it('finds the first incomplete question, or nothing when all are complete', () => {
+    const good = {
+      ...createQuestion('free_response'),
+      prompt: 'Q',
+      answer: 'A',
+    }
+    const bad = createQuestion('free_response')
+
+    expect(firstInvalidQuestion([good, bad, good])).toBe(bad)
+    expect(firstInvalidQuestion([good])).toBeUndefined()
+    expect(firstInvalidQuestion([])).toBeUndefined()
   })
 })

@@ -9,7 +9,15 @@ import {
 } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { drag } from '@/test/dnd-mock'
 import QuizBuilder from './QuizBuilder'
+
+vi.mock('@dnd-kit/react', async () =>
+  (await import('@/test/dnd-mock')).reactModule(),
+)
+vi.mock('@dnd-kit/react/sortable', async () =>
+  (await import('@/test/dnd-mock')).sortableModule(),
+)
 
 function renderBuilder(
   onSave: (quiz: unknown) => Promise<void> = vi
@@ -115,7 +123,7 @@ describe('QuizBuilder', () => {
     )
   })
 
-  it('moves questions up and down, keeping what was typed', () => {
+  it('reorders questions by dragging, keeping what was typed', () => {
     renderBuilder()
     fireEvent.change(question(1).getByLabelText('Question text'), {
       target: { value: 'First' },
@@ -124,14 +132,13 @@ describe('QuizBuilder', () => {
     fireEvent.change(question(2).getByLabelText('Question text'), {
       target: { value: 'Second' },
     })
-    expect(
-      screen.getByRole('button', { name: 'Move question 1 up' }),
-    ).toBeDisabled()
-    expect(
-      screen.getByRole('button', { name: 'Move question 2 down' }),
-    ).toBeDisabled()
+    const secondId = screen
+      .getByRole('group', { name: /^Question 2:/ })
+      .id.replace('question-', '')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Move question 2 up' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Reorder' }))
+    drag(secondId, 0)
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
 
     expect(question(1).getByLabelText('Question text')).toHaveValue('Second')
     expect(

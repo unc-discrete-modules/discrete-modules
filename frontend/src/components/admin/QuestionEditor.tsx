@@ -1,7 +1,7 @@
 /** Editor for one quiz question and its answer key. */
 
 import { useId } from 'react'
-import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,10 +19,8 @@ import {
 type QuestionEditorProps = {
   question: DraftQuestion
   number: number
-  total: number
   showProblems: boolean
   onChange: (changes: Partial<DraftQuestion>) => void
-  onMove: (direction: -1 | 1) => void
   onRemove: () => void
 }
 
@@ -37,10 +35,8 @@ function Problem({ id, children }: { id: string; children?: string }) {
 export default function QuestionEditor({
   question,
   number,
-  total,
   showProblems,
   onChange,
-  onMove,
   onRemove,
 }: QuestionEditorProps) {
   const baseId = useId()
@@ -157,6 +153,7 @@ export default function QuestionEditor({
             type="button"
             variant="outline"
             size="sm"
+            className="mt-3"
             disabled={question.options.length >= MAX_OPTIONS}
             onClick={() =>
               onChange({ options: [...question.options, createOption()] })
@@ -206,28 +203,6 @@ export default function QuestionEditor({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          aria-label={`Move question ${number} up`}
-          disabled={number === 1}
-          onClick={() => onMove(-1)}
-        >
-          <ArrowUp aria-hidden="true" />
-          Up
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          aria-label={`Move question ${number} down`}
-          disabled={number === total}
-          onClick={() => onMove(1)}
-        >
-          <ArrowDown aria-hidden="true" />
-          Down
-        </Button>
         <Button
           type="button"
           variant="ghost"

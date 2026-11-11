@@ -37,7 +37,7 @@ async function addQuiz(csrfToken: string, moduleId: number, quiz: QuizInput) {
 
 // Server validation errors point at fields like body.questions.1.options;
 // show them as "Question 2 (options): ..." so the quiz is easy to fix.
-function explain(error: unknown): unknown {
+export function explainQuizError(error: unknown): unknown {
   if (
     !(error instanceof ApiError) ||
     error.code !== 'validation_error' ||
@@ -68,6 +68,6 @@ export async function saveQuiz(
   try {
     await addQuiz(csrfToken, moduleId, quiz)
   } catch (error) {
-    throw explain(error)
+    throw explainQuizError(error)
   }
 }

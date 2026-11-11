@@ -189,10 +189,46 @@ describe('lesson editing page', () => {
   })
 })
 
+const quizRow = (overrides: Record<string, unknown> = {}) => ({
+  id: 5,
+  module_id: 12,
+  archived: false,
+  questions: [
+    {
+      id: 1,
+      key: 'disprove',
+      type: 'fill_in_blank',
+      prompt: 'By ______.',
+      answer: 'counterexample',
+      archived: false,
+      options: null,
+    },
+  ],
+  ...overrides,
+})
+
+function stubQuizApi(
+  quiz: Response | (() => Response) = () => Response.json(quizRow()),
+) {
+  const fetchMock = vi.fn<typeof fetch>((input) => {
+    const path = String(input)
+    if (path === '/api/admin/modules/12/quiz?include_archived=true') {
+      return Promise.resolve(typeof quiz === 'function' ? quiz() : quiz)
+    }
+    throw new Error(`Unexpected request: ${path}`)
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
 describe('quiz editing page', () => {
-  it('shows the page to admins, with a way back to the module', () => {
+  it("loads the module's quiz into the editor", async () => {
+    stubQuizApi()
     renderPage('/edit-module/12/edit-quiz/5', 'admin')
 
+    expect(await screen.findByLabelText('Correct answer')).toHaveValue(
+      'counterexample',
+    )
     expect(
       screen.getByRole('heading', { name: 'Edit quiz' }),
     ).toBeInTheDocument()
@@ -201,12 +237,66 @@ describe('quiz editing page', () => {
     ).toHaveAttribute('href', '/edit-module/12')
   })
 
-  it('turns students away', () => {
+  it('shows a loading message first', () => {
+    stubQuizApi()
+    renderPage('/edit-module/12/edit-quiz/5', 'admin')
+
+    expect(screen.getByRole('status')).toHaveTextContent('Loading quiz...')
+  })
+
+  it('offers a retry when the quiz cannot be loaded', async () => {
+    const fetchMock = stubQuizApi(
+      Response.json(
+        { error: { code: 'not_found', message: 'Quiz not found' } },
+        { status: 404 },
+      ),
+    )
+    renderPage('/edit-module/12/edit-quiz/5', 'admin')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Quiz not found')
+    const callsBefore = fetchMock.mock.calls.length
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+
+    await screen.findByRole('status')
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(callsBefore)
+  })
+
+  it('does not open a quiz whose id is not the same as in the address', async () => {
+    stubQuizApi(() => Response.json(quizRow({ id: 6 })))
+    renderPage('/edit-module/12/edit-quiz/5', 'admin')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Quiz not found.',
+    )
+    expect(screen.queryByLabelText('Correct answer')).not.toBeInTheDocument()
+  })
+
+  it('explains that a deleted quiz has to be restored first', async () => {
+    stubQuizApi(() => Response.json(quizRow({ archived: true })))
+    renderPage('/edit-module/12/edit-quiz/5', 'admin')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This quiz was deleted.',
+    )
+    expect(screen.queryByLabelText('Correct answer')).not.toBeInTheDocument()
+  })
+
+  it('rejects an address that is not a quiz without asking the server', () => {
+    const fetchMock = stubQuizApi()
+    renderPage('/edit-module/12/edit-quiz/abc', 'admin')
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Quiz not found.')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('turns students away without requesting anything', () => {
+    const fetchMock = stubQuizApi()
     renderPage('/edit-module/12/edit-quiz/5', 'student')
 
     expect(
       screen.getByText('You do not have access to this page.'),
     ).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /^Edit/ })).toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

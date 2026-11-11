@@ -1,14 +1,8 @@
 /** Edits an existing lesson: its title, video, and Markdown, with a preview. */
 
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type MouseEvent,
-  type SubmitEvent,
-} from 'react'
+import { useEffect, useId, useRef, useState, type SubmitEvent } from 'react'
 import { updateLesson } from '@/api/client'
+import { useUnsavedChangesGuard } from '@/hooks/use-unsaved-changes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -86,23 +80,11 @@ export default function LessonEditor({
     document.getElementById(id)?.focus()
   }, [focusRequests, view])
 
-  // Closing or reloading the tab would lose the changes.
-  useEffect(() => {
-    if (!dirty) return
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault()
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty])
+  const confirmLeave = useUnsavedChangesGuard(dirty)
 
   function change(changes: Partial<Fields>) {
     setNotice(null)
     setFields((current) => ({ ...current, ...changes }))
-  }
-
-  function confirmLeave(event: MouseEvent<HTMLAnchorElement>) {
-    if (dirty && !window.confirm('Leave without saving your changes?')) {
-      event.preventDefault()
-    }
   }
 
   async function handleSave(event: SubmitEvent<HTMLFormElement>) {

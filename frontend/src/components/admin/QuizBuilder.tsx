@@ -1,21 +1,17 @@
-/** Builds a quiz question by question, with an answer key for each. */
+/** Builds a new quiz question by question, with an answer key for each. */
 
-import { useEffect, useRef, useState, type SubmitEvent } from 'react'
+import { useState, type SubmitEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import {
-  QUESTION_TYPE_LABELS,
   createQuestion,
-  questionProblems,
+  firstInvalidQuestion,
   toQuizInput,
   type DraftQuestion,
-  type QuestionType,
 } from '@/lib/quiz-draft'
 import type { QuizInput } from '@/types/types'
 import CancelButton from './CancelButton'
 import { CreateFillButton } from './CreateButton'
-import QuestionEditor from './QuestionEditor'
+import QuestionListEditor from './QuestionListEditor'
 
 type QuizBuilderProps = {
   cancelTo: string
@@ -23,8 +19,6 @@ type QuizBuilderProps = {
   onSave: (quiz: QuizInput) => Promise<void>
   onSaved: () => void
 }
-
-const QUESTION_TYPES = Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]
 
 export default function QuizBuilder({
   cancelTo,
@@ -37,41 +31,6 @@ export default function QuizBuilder({
   const [attempted, setAttempted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // A question just added, to move keyboard focus to its text once it renders.
-  const focusAfterRender = useRef<string | null>(null)
-
-  useEffect(() => {
-    const id = focusAfterRender.current
-    if (!id) return
-    focusAfterRender.current = null
-    document
-      .getElementById(`question-${id}`)
-      ?.querySelector('textarea')
-      ?.focus()
-  }, [questions])
-
-  function addQuestion(type: QuestionType) {
-    const question = createQuestion(type)
-    setQuestions((current) => [...current, question])
-    focusAfterRender.current = question.id
-  }
-
-  function updateQuestion(id: string, changes: Partial<DraftQuestion>) {
-    setQuestions((current) =>
-      current.map((question) =>
-        question.id === id ? { ...question, ...changes } : question,
-      ),
-    )
-  }
-
-  function moveQuestion(index: number, direction: -1 | 1) {
-    setQuestions((current) => {
-      const next = [...current]
-      const [moved] = next.splice(index, 1)
-      next.splice(index + direction, 0, moved)
-      return next
-    })
-  }
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -83,9 +42,7 @@ export default function QuizBuilder({
       setError('Add at least one question.')
       return
     }
-    const firstInvalid = questions.find((question) =>
-      questionProblems(question),
-    )
+    const firstInvalid = firstInvalidQuestion(questions)
     if (firstInvalid) {
       setError('Fix the highlighted questions.')
       document.getElementById(`question-${firstInvalid.id}`)?.focus()
@@ -114,43 +71,11 @@ export default function QuizBuilder({
       aria-label="Quiz builder"
       className="max-w-4xl space-y-5"
     >
-      {questions.length === 0 && (
-        <p className="text-muted-foreground">
-          No questions yet. Add one below.
-        </p>
-      )}
-      {questions.map((question, index) => (
-        <QuestionEditor
-          key={question.id}
-          question={question}
-          number={index + 1}
-          total={questions.length}
-          showProblems={attempted}
-          onChange={(changes) => updateQuestion(question.id, changes)}
-          onMove={(direction) => moveQuestion(index, direction)}
-          onRemove={() =>
-            setQuestions((current) =>
-              current.filter((item) => item.id !== question.id),
-            )
-          }
-        />
-      ))}
-
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-bold text-muted-navy">Add question:</span>
-        {QUESTION_TYPES.map((type) => (
-          <Button
-            key={type}
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => addQuestion(type)}
-          >
-            <Plus aria-hidden="true" />
-            {QUESTION_TYPE_LABELS[type]}
-          </Button>
-        ))}
-      </div>
+      <QuestionListEditor
+        questions={questions}
+        onChange={setQuestions}
+        showProblems={attempted}
+      />
 
       {error && (
         <p role="alert" className="text-sm text-red-700">

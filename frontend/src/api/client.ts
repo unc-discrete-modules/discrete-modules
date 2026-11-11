@@ -101,7 +101,17 @@ function isAdminQuiz(value: unknown): value is AdminQuiz {
     typeof value.id === 'number' &&
     typeof value.module_id === 'number' &&
     typeof value.archived === 'boolean' &&
-    Array.isArray(value.questions)
+    Array.isArray(value.questions) &&
+    value.questions.every(
+      (question: unknown) =>
+        isRecord(question) &&
+        typeof question.key === 'string' &&
+        typeof question.type === 'string' &&
+        typeof question.prompt === 'string' &&
+        typeof question.archived === 'boolean' &&
+        (question.answer === null || typeof question.answer === 'string') &&
+        (question.options === null || Array.isArray(question.options)),
+    )
   )
 }
 
