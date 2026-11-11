@@ -103,8 +103,10 @@ uv run python -m src.seed --check   # validate only; no database needed
 uv run python -m src.seed           # load into DATABASE_URL
 ```
 
-- Re-running skips existing modules and their entire content trees. Database
-  edits and database-only content remain untouched; new modules are appended.
+- Re-running appends new modules and refreshes the title, body and video of
+  lessons already in the database, unless a lesson was edited there since the
+  seed last wrote it; those are reported and left as they are. Quizzes, module
+  details, lesson order and database-only content are never changed.
 - Removing content here does not remove it from the database. A module archived
   through the admin API is not inserted again, even while it remains here.
 - The whole run is one transaction. If validation or the database fails,

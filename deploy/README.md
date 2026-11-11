@@ -139,7 +139,7 @@ modules, lessons, and quizzes through the admin API:
    oc rollout status deployment/backend --timeout=5m
    ```
 
-The seed skips existing module trees and appends new modules. It runs in one transaction,
+The seed appends new modules and refreshes lessons that were not edited in the database. It runs in one transaction,
 so a failed run changes nothing; the new pod stays in `Init:Error` or
 `Init:CrashLoopBackOff` and the previous pod keeps serving. Find the cause with:
 
