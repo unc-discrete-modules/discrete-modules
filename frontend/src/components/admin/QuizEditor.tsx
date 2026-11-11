@@ -104,15 +104,12 @@ export default function QuizEditor({ quiz, csrfToken }: QuizEditorProps) {
         aria-label="Quiz editor"
         className="max-w-4xl space-y-5"
       >
-        {/* Locked while saving: the questions are replaced with what the
-            server stored, which would discard anything changed meanwhile. */}
-        <fieldset disabled={saving} className="min-w-0">
-          <QuestionListEditor
-            questions={questions}
-            onChange={change}
-            showProblems={attempted}
-          />
-        </fieldset>
+        <QuestionListEditor
+          questions={questions}
+          onChange={change}
+          showProblems={attempted}
+          disabled={saving}
+        />
 
         {notice && (
           <p role="status" className="text-sm font-bold text-muted-navy">

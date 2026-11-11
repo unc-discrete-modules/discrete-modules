@@ -71,15 +71,12 @@ export default function QuizBuilder({
       aria-label="Quiz builder"
       className="max-w-4xl space-y-5"
     >
-      {/* Locked while saving: the page moves on once the quiz is saved, which
-          would discard anything changed meanwhile. */}
-      <fieldset disabled={submitting} className="min-w-0">
-        <QuestionListEditor
-          questions={questions}
-          onChange={setQuestions}
-          showProblems={attempted}
-        />
-      </fieldset>
+      <QuestionListEditor
+        questions={questions}
+        onChange={setQuestions}
+        showProblems={attempted}
+        disabled={submitting}
+      />
 
       {error && (
         <p role="alert" className="text-sm text-red-700">

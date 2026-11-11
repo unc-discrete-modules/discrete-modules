@@ -504,4 +504,36 @@ describe('QuizEditor', () => {
     expect(question(2).getByLabelText('Correct answer')).toBeEnabled()
     expect(question(2).getByLabelText('Correct answer')).toHaveValue('Keep me')
   })
+
+  it('ignores a question dropped while a save is in flight', async () => {
+    let finish: () => void = () => {}
+    const fetchMock = vi.fn<typeof fetch>(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = () => resolve(stored(JSON.parse('{"questions":[]}')))
+        }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    renderEditor()
+    fireEvent.change(question(2).getByLabelText('Correct answer'), {
+      target: { value: 'one' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Reorder' }))
+
+    fireEvent.click(save())
+    await waitFor(() => expect(save()).toBeDisabled())
+    drag('odd-square', 0)
+
+    const prompts = () =>
+      screen
+        .getAllByText(/^(Which is|A single case|Prove)/)
+        .map((node) => node.textContent)
+    expect(prompts()).toEqual([
+      'Which is $P$?',
+      'A single case is a proof by ______.',
+      'Prove $x^2$ is odd.',
+    ])
+    finish()
+    await screen.findByRole('status')
+  })
 })
