@@ -113,6 +113,9 @@ def require_user(
         raise HTTPException(503, "Authentication service unavailable") from exc
 
 
+CurrentUser = Annotated[AuthenticatedUser, Depends(require_user)]
+
+
 def require_admin(
     user: Annotated[AuthenticatedUser, Depends(require_user)],
 ) -> AuthenticatedUser:

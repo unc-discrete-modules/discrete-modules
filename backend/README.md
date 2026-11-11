@@ -82,6 +82,13 @@ records a `quiz_attempts` row with one `question_responses` row per question for
 the signed-in user. The score counts correct auto-graded questions; free responses
 are stored but never scored.
 
+Progress is per signed-in user. `POST /api/lessons/{id}/complete` marks a lesson
+complete and is safe to repeat; it keeps the first completion time.
+`GET /api/modules/{id}/progress` and `GET /api/me/progress` report completed
+lessons and the best quiz attempt (by score fraction, ties to the latest) for one
+module or every visible module. Archived lessons and quizzes are left out of the
+results, but their stored rows return when the content is restored.
+
 ## Application database sessions
 
 Use `get_db_session` as a FastAPI dependency for one SQLModel session per

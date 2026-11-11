@@ -6,8 +6,11 @@ from sqlmodel import Session
 from src.database import get_db_session
 from src.errors import INVALID, NOT_FOUND
 from src.schemas.module import Module, ModuleSummary
+from src.schemas.progress import ModuleProgress
 from src.schemas.quiz import Quiz
 from src.services import modules as module_service
+from src.services import progress as progress_service
+from src.services.auth import CurrentUser
 
 router = APIRouter(prefix="/modules", tags=["modules"])
 
@@ -43,3 +46,18 @@ def get_module_quiz(module_id: int, session: SessionDep) -> Quiz:
     if quiz is None:
         raise HTTPException(404, f"Module {module_id} has no quiz")
     return quiz
+
+
+@router.get(
+    "/{module_id}/progress",
+    operation_id="get_module_progress",
+    summary="Get the signed-in user's progress in a module",
+    responses=NOT_FOUND | INVALID,
+)
+def get_module_progress(
+    module_id: int, session: SessionDep, user: CurrentUser
+) -> ModuleProgress:
+    progress = progress_service.get_module_progress(session, user.id, module_id)
+    if progress is None:
+        raise HTTPException(404, f"Module {module_id} not found")
+    return progress
