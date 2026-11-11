@@ -26,10 +26,10 @@ Apply the database migrations before using authentication. Configure:
 | `SAML_IDP_METADATA_PATH` | `/app/saml/unc-idp.xml` |
 | `SAML_SP_CERTIFICATE_PATH` | `/var/run/saml/sp.crt` |
 | `SAML_SP_PRIVATE_KEY_PATH` | `/var/run/saml/sp.key` |
-| `SAML_EMAIL_SOURCE` | `nameid` or `attribute`, after confirming release |
+| `SAML_EMAIL_SOURCE` | `nameid` (UNC reports an email-format NameID) |
 | `SAML_EMAIL_ATTRIBUTE` | Exact SAML Attribute Name, required for `attribute` |
-| `SAML_ONYEN_ATTRIBUTE` | Optional exact Attribute Name carrying the Onyen |
-| `SAML_DISPLAY_NAME_ATTRIBUTE` | Optional exact Attribute Name carrying the display name |
+| `SAML_ONYEN_ATTRIBUTE` | `uid` (optional; confirm the assertion Attribute Name) |
+| `SAML_DISPLAY_NAME_ATTRIBUTE` | `givenName` (optional; confirm the assertion Attribute Name) |
 | `ADMIN_EMAILS` | JSON array of full UNC email addresses; defaults to `[]` |
 
 The email source deliberately has no default. Requested email release does not
@@ -38,6 +38,9 @@ with format `urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress`; otherwise
 configure the exact released email Attribute Name, not its FriendlyName. The
 application requires exactly one nonempty email and does not infer alternate
 attributes. Login returns 503 until file configuration and email mapping exist.
+UNC lists `uid` and `givenName` in its release policy; confirm that these are
+also the exact Attribute Names in a successful assertion. The display name
+mapping supplies the given name, not the full name.
 
 Users are keyed by UNC issuer and the email provided by UNC, with surrounding
 whitespace removed and case preserved. A changed email creates a separate
