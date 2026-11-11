@@ -12,7 +12,12 @@ import { SaveFillButton } from '@/components/admin/SaveButton'
 import ReorderButton from '@/components/admin/ReorderButton'
 import PlusButton from '@/components/admin/PlusButton'
 import ContentRow from '@/components/admin/ContentRow'
-import { reorderLessons, updateModule } from '@/api/client'
+import {
+  deleteLesson,
+  deleteQuiz,
+  reorderLessons,
+  updateModule,
+} from '@/api/client'
 import { ErrorState, LoadingState } from '@/components/RequestState'
 
 export default function ModuleEdit() {
@@ -88,6 +93,16 @@ export default function ModuleEdit() {
     } finally {
       setSaving(false)
     }
+  }
+
+  // Deleting archives the content on the server, so the module is reloaded to
+  // drop it from the lists. A failure is thrown for the row to display.
+  async function deleteContent(remove: (csrfToken: string) => Promise<void>) {
+    if (authState.status !== 'authenticated') {
+      throw new Error('Your session has expired. Please sign in again.')
+    }
+    await remove(authState.user.csrf_token)
+    retry()
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -280,6 +295,11 @@ export default function ModuleEdit() {
                     name={lesson.title}
                     reordering={reordering}
                     disabled={saving}
+                    onDelete={() =>
+                      deleteContent((csrfToken) =>
+                        deleteLesson(lesson.id, csrfToken),
+                      )
+                    }
                   />
                 ))}
               </div>
@@ -312,6 +332,11 @@ export default function ModuleEdit() {
                     name={`Quiz ${index + 1}`}
                     contentType="quiz"
                     reordering={reorderingQuizzes}
+                    onDelete={() =>
+                      deleteContent((csrfToken) =>
+                        deleteQuiz(quizId, csrfToken),
+                      )
+                    }
                   />
                 ))}
               </div>

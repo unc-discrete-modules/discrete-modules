@@ -3,6 +3,7 @@ import type {
   ErrorResponse,
   Lesson,
   LessonInput,
+  LessonPatch,
   LessonResponse,
   Module,
   ModuleResponse,
@@ -84,7 +85,8 @@ function isLessonResponse(value: unknown): value is LessonResponse {
     typeof value.id === 'number' &&
     typeof value.key === 'string' &&
     typeof value.title === 'string' &&
-    typeof value.position === 'number'
+    typeof value.position === 'number' &&
+    typeof value.archived === 'boolean'
   )
 }
 
@@ -267,6 +269,52 @@ export function createLesson(
         'X-CSRF-Token': csrfToken,
       },
       body: JSON.stringify(lesson),
+    },
+    isLessonResponse,
+  )
+}
+
+export function listModuleLessons(
+  moduleId: number,
+  includeArchived: boolean,
+  signal?: AbortSignal,
+): Promise<LessonResponse[]> {
+  return requestJson(
+    `/admin/modules/${moduleId}/lessons?include_archived=${includeArchived}`,
+    { signal },
+    (value): value is LessonResponse[] =>
+      Array.isArray(value) && value.every(isLessonResponse),
+  )
+}
+
+export function updateLesson(
+  csrfToken: string,
+  lessonId: number,
+  changes: LessonPatch,
+): Promise<LessonResponse> {
+  return requestJson(
+    `/admin/lessons/${lessonId}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify(changes),
+    },
+    isLessonResponse,
+  )
+}
+
+export function restoreLesson(
+  csrfToken: string,
+  lessonId: number,
+): Promise<LessonResponse> {
+  return requestJson(
+    `/admin/lessons/${lessonId}/restore`,
+    {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken },
     },
     isLessonResponse,
   )

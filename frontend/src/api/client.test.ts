@@ -10,10 +10,13 @@ import {
   getLesson,
   getModule,
   getQuiz,
+  listModuleLessons,
   listModules,
+  restoreLesson,
   reorderLessons,
   reorderModules,
   submitQuiz,
+  updateLesson,
   updateModule,
 } from './client'
 import type { Quiz, SubmissionRequest, SubmissionResult } from '@/types/types'
@@ -252,6 +255,83 @@ describe('learning API client', () => {
         },
         body: JSON.stringify(lesson),
         credentials: 'same-origin',
+      }),
+    )
+  })
+
+  it('lists a module’s lessons, including archived ones, for admins', async () => {
+    const row = {
+      id: 31,
+      module_id: 12,
+      key: 'proofs',
+      title: 'Proofs',
+      body: '## Hi',
+      video_url: null,
+      position: 0,
+      archived: true,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json([row]))
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(listModuleLessons(12, true)).resolves.toEqual([row])
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/modules/12/lessons?include_archived=true',
+      expect.objectContaining({ credentials: 'same-origin' }),
+    )
+  })
+
+  it('updates a lesson, clearing its video when asked', async () => {
+    const row = {
+      id: 31,
+      module_id: 12,
+      key: 'proofs',
+      title: 'New',
+      body: 'Body',
+      video_url: null,
+      position: 0,
+      archived: true,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json(row))
+    vi.stubGlobal('fetch', fetch)
+    const changes = { title: 'New', body: 'Body', video_url: null }
+
+    await expect(updateLesson('csrf', 31, changes)).resolves.toEqual(row)
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/lessons/31',
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': 'csrf',
+        },
+        body: JSON.stringify(changes),
+      }),
+    )
+  })
+
+  it('restores an archived lesson', async () => {
+    const row = {
+      id: 31,
+      module_id: 12,
+      key: 'proofs',
+      title: 'Proofs',
+      body: 'Body',
+      video_url: null,
+      position: 0,
+      archived: false,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json(row))
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(restoreLesson('csrf', 31)).resolves.toEqual(row)
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/lessons/31/restore',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'X-CSRF-Token': 'csrf' },
       }),
     )
   })
