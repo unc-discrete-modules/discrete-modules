@@ -294,6 +294,7 @@ export default function ModuleEdit() {
                     id={lesson.id}
                     index={index}
                     name={lesson.title}
+                    editTo={`/edit-module/${module.id}/edit-lesson/${lesson.id}`}
                     reordering={reordering}
                     disabled={saving}
                     onDelete={() =>
@@ -332,6 +333,7 @@ export default function ModuleEdit() {
                     index={index}
                     name={`Quiz ${index + 1}`}
                     contentType="quiz"
+                    editTo={`/edit-module/${module.id}/edit-quiz/${quizId}`}
                     reordering={reorderingQuizzes}
                     onDelete={() =>
                       deleteContent((csrfToken) =>

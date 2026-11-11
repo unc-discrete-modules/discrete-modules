@@ -106,6 +106,14 @@ function renderModuleEdit() {
         <MemoryRouter initialEntries={['/edit-module/12']}>
           <Routes>
             <Route path="/edit-module/:moduleId" element={<ModuleEdit />} />
+            <Route
+              path="/edit-module/:moduleId/edit-lesson/:lessonId"
+              element={<p>Lesson editor</p>}
+            />
+            <Route
+              path="/edit-module/:moduleId/edit-quiz/:quizId"
+              element={<p>Quiz editor</p>}
+            />
           </Routes>
         </MemoryRouter>
       </AuthContext.Provider>
@@ -214,5 +222,48 @@ describe('deleting module content', () => {
       '/api/admin/quizzes/3',
       expect.objectContaining({ method: 'DELETE' }),
     )
+  })
+})
+
+describe('editing module content', () => {
+  // The Edit link sits in the row that contains the given name.
+  const editLinkFor = (name: string) =>
+    within(screen.getByText(name).closest('div.flex') as HTMLElement).getByRole(
+      'link',
+      { name: 'Edit' },
+    )
+
+  it('opens the lesson editor for the chosen lesson in this module', async () => {
+    stubApi(lessons)
+    renderModuleEdit()
+    await screen.findByText('First lesson')
+
+    expect(editLinkFor('First lesson')).toHaveAttribute(
+      'href',
+      '/edit-module/12/edit-lesson/1',
+    )
+    expect(editLinkFor('Second lesson')).toHaveAttribute(
+      'href',
+      '/edit-module/12/edit-lesson/2',
+    )
+
+    fireEvent.click(editLinkFor('Second lesson'))
+
+    expect(await screen.findByText('Lesson editor')).toBeInTheDocument()
+  })
+
+  it('opens the quiz editor, not the lesson editor, from the quiz row', async () => {
+    stubApi(lessons, { quizId: 3 })
+    renderModuleEdit()
+    await screen.findByText('Quiz 1')
+
+    expect(editLinkFor('Quiz 1')).toHaveAttribute(
+      'href',
+      '/edit-module/12/edit-quiz/3',
+    )
+
+    fireEvent.click(editLinkFor('Quiz 1'))
+
+    expect(await screen.findByText('Quiz editor')).toBeInTheDocument()
   })
 })

@@ -11,6 +11,8 @@ type ContentProps = {
   index: number
   name: string
   contentType?: 'lesson' | 'quiz'
+  // Where the Edit link goes.
+  editTo: string
   reordering: boolean
   disabled?: boolean
   // A rejection's message is shown in the confirmation popup.
@@ -22,6 +24,7 @@ export default function ContentRow({
   index,
   name,
   contentType = 'lesson',
+  editTo,
   reordering,
   disabled = false,
   onDelete,
@@ -72,7 +75,7 @@ export default function ContentRow({
       <p className="text-muted-navy text-md font-semibold">{name}</p>
       <div className="space-x-3">
         <Link
-          to={`/edit-lesson/${id}`}
+          to={editTo}
           className="text-light-blue font-bold hover:saturate-120 hover:scale-102"
         >
           Edit

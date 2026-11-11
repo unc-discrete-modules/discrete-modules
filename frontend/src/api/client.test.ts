@@ -8,6 +8,7 @@ import {
   deleteLesson,
   deleteModule,
   deleteQuiz,
+  getAdminLesson,
   getAdminQuiz,
   getLesson,
   getModule,
@@ -287,6 +288,43 @@ describe('learning API client', () => {
     expect(fetch).toHaveBeenCalledWith(
       '/api/admin/modules/12/lessons?include_archived=true',
       expect.objectContaining({ credentials: 'same-origin' }),
+    )
+  })
+
+  it('reads a lesson for editing, with its key and archived state', async () => {
+    const row = {
+      id: 31,
+      module_id: 12,
+      key: 'proofs',
+      title: 'Proofs',
+      body: '## Hi',
+      video_url: 'https://youtu.be/abc',
+      position: 0,
+      archived: false,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json(row))
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(getAdminLesson(31)).resolves.toEqual(row)
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/lessons/31',
+      expect.objectContaining({ credentials: 'same-origin' }),
+    )
+  })
+
+  it('rejects a lesson response that is missing its content', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          Response.json({ id: 31, key: 'proofs', title: 'Proofs' }),
+        ),
+    )
+
+    await expect(getAdminLesson(31)).rejects.toThrow(
+      'The server returned an invalid response',
     )
   })
 

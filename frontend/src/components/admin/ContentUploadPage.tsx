@@ -1,13 +1,12 @@
 /** Admin page for adding a lesson or quiz to a module from a content file. */
 
 import { useState, type ComponentType } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
-import { buttonVariants } from '@/components/ui/button-variants'
+import { useParams } from 'react-router-dom'
 import { ErrorState, LoadingState } from '@/components/RequestState'
 import { useAuth } from '@/context/auth-context-value'
 import { useModule } from '@/hooks/use-modules'
 import NoAccess from '@/pages/NoAccess'
+import BackToModuleLink from './BackToModuleLink'
 import FileUploadForm from './FileUploadForm'
 import type { LessonSummary } from '@/types/types'
 import { Button } from '@/components/ui/button'
@@ -88,14 +87,7 @@ export default function ContentUploadPage({
   return (
     <div className="mx-10">
       <div className="py-5">
-        {/* A link, not a button inside a link, so it is one control. */}
-        <Link
-          to={`/edit-module/${module.id}`}
-          className={`${buttonVariants({ variant: 'outline' })} mb-4 rounded-md border-light-blue font-bold text-muted-navy`}
-        >
-          <ArrowLeft aria-hidden="true" />
-          Back to module editing
-        </Link>
+        <BackToModuleLink moduleId={module.id} />
         <h1 className="text-3xl font-bold text-muted-navy">
           Add {contentName}
         </h1>

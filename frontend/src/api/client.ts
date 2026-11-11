@@ -85,8 +85,11 @@ function isLessonResponse(value: unknown): value is LessonResponse {
   return (
     isRecord(value) &&
     typeof value.id === 'number' &&
+    typeof value.module_id === 'number' &&
     typeof value.key === 'string' &&
     typeof value.title === 'string' &&
+    typeof value.body === 'string' &&
+    (value.video_url === null || typeof value.video_url === 'string') &&
     typeof value.position === 'number' &&
     typeof value.archived === 'boolean'
   )
@@ -297,6 +300,14 @@ export function listModuleLessons(
     (value): value is LessonResponse[] =>
       Array.isArray(value) && value.every(isLessonResponse),
   )
+}
+
+// Unlike the student endpoint, this includes the key and archived state.
+export function getAdminLesson(
+  lessonId: number,
+  signal?: AbortSignal,
+): Promise<LessonResponse> {
+  return requestJson(`/admin/lessons/${lessonId}`, { signal }, isLessonResponse)
 }
 
 export function updateLesson(

@@ -212,7 +212,9 @@ export default function LessonBuilder({
             title={previewTitle.trim() || 'Untitled lesson'}
             videoUrl={isHttpUrl(previewVideo) ? previewVideo : null}
             body={previewBody}
-            module={module}
+            moduleId={module.id}
+            // The lesson is added after the module's existing ones.
+            lessonNumber={module.lessons.length + 1}
           />
         </section>
       )}
