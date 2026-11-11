@@ -1,5 +1,11 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext, type User } from '@/context/auth-context-value'
@@ -45,6 +51,7 @@ function renderPage(path: string, role: User['role']) {
             path="/edit-module/:moduleId/create-quiz"
             element={<QuizCreation />}
           />
+          <Route path="/edit-module/:moduleId" element={<p>Module editor</p>} />
         </Routes>
       </MemoryRouter>
     </AuthContext.Provider>,
@@ -164,7 +171,12 @@ function stubQuizApi({
   return fetchMock
 }
 
+async function switchToUpload() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Upload a file' }))
+}
+
 async function chooseQuiz(file: File) {
+  await switchToUpload()
   fireEvent.change(await screen.findByLabelText('Quiz file'), {
     target: { files: [file] },
   })
@@ -207,6 +219,7 @@ describe('content creation pages', () => {
     )
 
     renderPage('/edit-module/12/create-quiz', 'admin')
+    await switchToUpload()
 
     expect(
       await screen.findByRole('heading', { name: 'Add quiz' }),
@@ -476,6 +489,7 @@ describe('content creation pages', () => {
       vi.fn(() => Promise.resolve(Response.json(module))),
     )
     renderPage('/edit-module/12/create-quiz', 'admin')
+    await switchToUpload()
 
     fireEvent.change(await screen.findByLabelText('Quiz file'), {
       target: { files: [new File(['questions: []'], 'quiz.yaml')] },
@@ -500,6 +514,182 @@ describe('content creation pages', () => {
     expect(
       await screen.findByRole('link', { name: 'Back to module editing' }),
     ).toHaveAttribute('href', '/edit-module/12')
+  })
+
+  it('offers building the quiz in the editor or uploading a file', async () => {
+    stubQuizApi()
+    renderPage('/edit-module/12/create-quiz', 'admin')
+
+    const build = await screen.findByRole('button', {
+      name: 'Build in the editor',
+    })
+    const upload = screen.getByRole('button', { name: 'Upload a file' })
+    expect(build).toHaveAttribute('aria-pressed', 'true')
+    expect(upload).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('form', { name: 'Quiz builder' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: /create/i })).toBeVisible()
+
+    fireEvent.click(upload)
+
+    expect(upload).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      screen.queryByRole('form', { name: 'Quiz builder' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Quiz file')).toBeVisible()
+  })
+
+  it('has no editor switch for lessons, which are only uploaded', async () => {
+    stubLessonApi()
+    renderPage('/edit-module/12/create-lesson', 'admin')
+
+    expect(await screen.findByLabelText('Lesson file')).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'Build in the editor' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps what was built when switching to upload and back', async () => {
+    stubQuizApi()
+    renderPage('/edit-module/12/create-quiz', 'admin')
+    const prompt = await screen.findByLabelText('Question text')
+    fireEvent.change(prompt, { target: { value: 'Which is $P$?' } })
+
+    await switchToUpload()
+    fireEvent.click(screen.getByRole('button', { name: 'Build in the editor' }))
+
+    expect(screen.getByLabelText('Question text')).toHaveValue('Which is $P$?')
+  })
+
+  it('builds a quiz with all three question types and saves it', async () => {
+    const fetchMock = stubQuizApi()
+    renderPage('/edit-module/12/create-quiz', 'admin')
+    const form = await screen.findByRole('form', { name: 'Quiz builder' })
+    const inQuestion = (n: number) =>
+      within(
+        within(form).getByRole('group', {
+          name: new RegExp(`^Question ${n}:`),
+        }),
+      )
+
+    fireEvent.change(inQuestion(1).getByLabelText('Question text'), {
+      target: { value: 'Which is $P$?' },
+    })
+    fireEvent.change(inQuestion(1).getByLabelText('Option 1 text'), {
+      target: { value: '$x$ is even' },
+    })
+    fireEvent.change(inQuestion(1).getByLabelText('Option 2 text'), {
+      target: { value: 'other' },
+    })
+    fireEvent.click(inQuestion(1).getByLabelText('Option 1 is correct'))
+
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Fill in the blank' }),
+    )
+    fireEvent.change(inQuestion(2).getByLabelText('Question text'), {
+      target: { value: 'A single case is a proof by ______.' },
+    })
+    fireEvent.change(inQuestion(2).getByLabelText('Correct answer'), {
+      target: { value: 'counterexample' },
+    })
+
+    fireEvent.click(within(form).getByRole('button', { name: 'Free response' }))
+    fireEvent.change(inQuestion(3).getByLabelText('Question text'), {
+      target: { value: 'Prove $x^2$ is odd.' },
+    })
+    fireEvent.change(inQuestion(3).getByLabelText('Model answer'), {
+      target: { value: '1. $x = 2k + 1$' },
+    })
+
+    fireEvent.click(within(form).getByRole('button', { name: /create/i }))
+
+    expect(await screen.findByText('Module editor')).toBeInTheDocument()
+    const init = fetchMock.mock.calls.find(
+      ([, init]) => init?.method === 'POST',
+    )?.[1]
+    expect(init?.headers).toMatchObject({ 'X-CSRF-Token': 'csrf-token' })
+    const { questions } = JSON.parse(init?.body as string)
+    expect(questions).toHaveLength(3)
+    expect(new Set(questions.map((q: { key: string }) => q.key)).size).toBe(3)
+    expect(questions[0].key).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/)
+    // Keys are random, so they are checked above and left out here.
+    expect(
+      questions.map((question: Record<string, unknown>) =>
+        Object.fromEntries(
+          Object.entries(question).filter(([field]) => field !== 'key'),
+        ),
+      ),
+    ).toEqual([
+      {
+        type: 'multiple_choice',
+        prompt: 'Which is $P$?',
+        options: [
+          { text: '$x$ is even', correct: true },
+          { text: 'other', correct: false },
+        ],
+      },
+      {
+        type: 'fill_in_blank',
+        prompt: 'A single case is a proof by ______.',
+        answer: 'counterexample',
+      },
+      {
+        type: 'free_response',
+        prompt: 'Prove $x^2$ is odd.',
+        answer: '1. $x = 2k + 1$',
+      },
+    ])
+  })
+
+  it('does not send an incomplete quiz and says what to fix', async () => {
+    const fetchMock = stubQuizApi()
+    renderPage('/edit-module/12/create-quiz', 'admin')
+    const form = await screen.findByRole('form', { name: 'Quiz builder' })
+
+    fireEvent.click(within(form).getByRole('button', { name: /create/i }))
+
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'Fix the highlighted questions.',
+    )
+    expect(within(form).getByText('Enter the question.')).toBeVisible()
+    expect(
+      within(form).getByText('Fill in every option, or remove the empty ones.'),
+    ).toBeVisible()
+    expect(writes(fetchMock)).toEqual([])
+  })
+
+  it('shows why the server could not save a built quiz and keeps it', async () => {
+    stubQuizApi({
+      create: () =>
+        Response.json(
+          {
+            error: {
+              code: 'conflict',
+              message: 'Module is archived; restore it first',
+            },
+          },
+          { status: 409 },
+        ),
+    })
+    renderPage('/edit-module/12/create-quiz', 'admin')
+    const form = await screen.findByRole('form', { name: 'Quiz builder' })
+    fireEvent.change(within(form).getByLabelText('Question text'), {
+      target: { value: 'Q' },
+    })
+    fireEvent.change(within(form).getByLabelText('Option 1 text'), {
+      target: { value: 'A' },
+    })
+    fireEvent.change(within(form).getByLabelText('Option 2 text'), {
+      target: { value: 'B' },
+    })
+    fireEvent.click(within(form).getByLabelText('Option 2 is correct'))
+
+    fireEvent.click(within(form).getByRole('button', { name: /create/i }))
+
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'Module is archived; restore it first',
+    )
+    expect(within(form).getByLabelText('Question text')).toHaveValue('Q')
+    expect(screen.queryByText('Module editor')).not.toBeInTheDocument()
   })
 
   it('turns students away without requesting the module', () => {
