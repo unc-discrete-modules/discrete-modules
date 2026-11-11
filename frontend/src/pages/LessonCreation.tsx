@@ -2,7 +2,7 @@
 
 import ContentUploadPage from '@/components/admin/ContentUploadPage'
 import LessonPreview from '@/components/admin/LessonPreview'
-import type { CreateLesson } from '@/components/admin/upload-types'
+import type { CreateContent } from '@/components/admin/upload-types'
 import {
   createLesson,
   listModuleLessons,
@@ -38,7 +38,7 @@ async function addLesson(
   return restoreLesson(csrfToken, existing.id)
 }
 
-const createLessonFromFile: CreateLesson = async (
+const createLessonFromFile: CreateContent = async (
   file,
   { module, csrfToken },
 ) => {

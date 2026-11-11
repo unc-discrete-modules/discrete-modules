@@ -30,7 +30,8 @@ export default function ModuleEdit() {
   const [lessonOrder, setLessonOrder] = useState<number[] | null>(null)
   const [reordering, setReordering] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
+  const [nameError, setNameError] = useState<string | null>(null)
+  const [orderError, setOrderError] = useState<string | null>(null)
   const [quizOrder, setQuizOrder] = useState<number[] | null>(null)
   const [reorderingQuizzes, setReorderingQuizzes] = useState(false)
   const [editedModuleName, setEditedModuleName] = useState<{
@@ -78,7 +79,7 @@ export default function ModuleEdit() {
     }
 
     setSaving(true)
-    setSaveError(null)
+    setNameError(null)
     try {
       const updatedModule = await updateModule(
         authState.user.csrf_token,
@@ -89,7 +90,7 @@ export default function ModuleEdit() {
       setEditedModuleName({ moduleId: module.id, title: updatedModule.title })
       updateModuleTitle(module.id, updatedModule.title)
     } catch {
-      setSaveError('Unable to save module name. Please try again.')
+      setNameError('Unable to save module name. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -137,19 +138,19 @@ export default function ModuleEdit() {
 
   async function handleReorderClick() {
     if (!reordering) {
-      setSaveError(null)
+      setOrderError(null)
       setReordering(true)
       return
     }
 
     if (authState.status !== 'authenticated') {
-      setSaveError('Your session has expired. Please sign in again.')
+      setOrderError('Your session has expired. Please sign in again.')
       return
     }
     if (!module) return
 
     setSaving(true)
-    setSaveError(null)
+    setOrderError(null)
     try {
       const result = await reorderLessons(
         module.id,
@@ -159,7 +160,7 @@ export default function ModuleEdit() {
       setLessonOrder(result.ids)
       setReordering(false)
     } catch (error) {
-      setSaveError(
+      setOrderError(
         error instanceof Error
           ? error.message
           : 'Unable to save lesson order. Please try again.',
@@ -255,9 +256,9 @@ export default function ModuleEdit() {
               />
               <SaveFillButton onClick={handleSave} />
             </div>
-            {saveError && (
+            {nameError && (
               <p role="alert" className="mt-2 text-sm text-red-700">
-                {saveError}
+                {nameError}
               </p>
             )}
           </div>
@@ -279,9 +280,9 @@ export default function ModuleEdit() {
                 />
               </div>
             </div>
-            {saveError && (
+            {orderError && (
               <p role="alert" className="text-sm text-red-700">
-                {saveError}
+                {orderError}
               </p>
             )}
             <DragDropProvider onDragEnd={handleDragEnd}>

@@ -106,6 +106,72 @@ const writes = (fetchMock: ReturnType<typeof stubLessonApi>) =>
 const lessonFile = (title: string, name: string) =>
   new File([`---\ntitle: ${title}\n---\n\n## Welcome`], name)
 
+const quizRow = (archived = false) => ({
+  id: 5,
+  module_id: 12,
+  archived,
+  questions: [],
+})
+
+const quizYaml = `questions:
+  - key: identify-p
+    type: multiple_choice
+    prompt: Which is $P$?
+    options:
+      - text: "$x$ is even"
+        correct: true
+      - text: other
+`
+
+const quizFile = (text = quizYaml, name = 'quiz.yaml') => new File([text], name)
+
+// Routes the requests quiz creation makes. `existing` is what the admin quiz
+// endpoint holds for the module: nothing, or an active or archived quiz.
+function stubQuizApi({
+  existing = null,
+  create = () => Response.json(quizRow(), { status: 201 }),
+}: {
+  existing?: ReturnType<typeof quizRow> | null
+  create?: () => Response
+} = {}) {
+  const fetchMock = vi.fn<typeof fetch>((input, init) => {
+    const path = String(input)
+    const method = init?.method ?? 'GET'
+    if (path === '/api/modules/12')
+      return Promise.resolve(Response.json(module))
+    if (method === 'GET' && path.startsWith('/api/admin/modules/12/quiz')) {
+      return Promise.resolve(
+        existing
+          ? Response.json(existing)
+          : Response.json(
+              { error: { code: 'not_found', message: 'Quiz not found' } },
+              { status: 404 },
+            ),
+      )
+    }
+    if (method === 'POST' && path === '/api/admin/modules/12/quiz') {
+      return Promise.resolve(create())
+    }
+    if (method === 'PUT' && path === '/api/admin/quizzes/5') {
+      return Promise.resolve(Response.json(quizRow(true)))
+    }
+    if (method === 'POST' && path === '/api/admin/quizzes/5/restore') {
+      return Promise.resolve(Response.json(quizRow()))
+    }
+    throw new Error(`Unexpected request: ${method} ${path}`)
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
+async function chooseQuiz(file: File) {
+  fireEvent.change(await screen.findByLabelText('Quiz file'), {
+    target: { files: [file] },
+  })
+  await screen.findByLabelText('File contents')
+  fireEvent.click(screen.getByRole('button', { name: /create/i }))
+}
+
 describe('content creation pages', () => {
   afterEach(() => {
     cleanup()
@@ -307,19 +373,101 @@ describe('content creation pages', () => {
     expect(screen.getByRole('region', { name: 'Preview' })).toBeInTheDocument()
   })
 
-  it('keeps Create disabled on the quiz page until quizzes can be created', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => Promise.resolve(Response.json(module))),
-    )
+  it('creates the quiz from the file', async () => {
+    const fetchMock = stubQuizApi()
     renderPage('/edit-module/12/create-quiz', 'admin')
 
-    fireEvent.change(await screen.findByLabelText('Quiz file'), {
-      target: { files: [new File(['questions: []'], 'quiz.yaml')] },
-    })
+    await chooseQuiz(quizFile())
 
-    await screen.findByLabelText('File contents')
-    expect(screen.getByRole('button', { name: /create/i })).toBeDisabled()
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Created quiz.yaml.',
+    )
+    expect(writes(fetchMock)).toEqual([['POST', '/api/admin/modules/12/quiz']])
+    const init = fetchMock.mock.calls.find(
+      ([, init]) => init?.method === 'POST',
+    )?.[1]
+    expect(init?.headers).toMatchObject({ 'X-CSRF-Token': 'csrf-token' })
+    expect(JSON.parse(init?.body as string)).toEqual({
+      questions: [
+        {
+          key: 'identify-p',
+          type: 'multiple_choice',
+          prompt: 'Which is $P$?',
+          options: [{ text: '$x$ is even', correct: true }, { text: 'other' }],
+        },
+      ],
+    })
+  })
+
+  it('brings back a deleted quiz with the uploaded questions', async () => {
+    const fetchMock = stubQuizApi({ existing: quizRow(true) })
+    renderPage('/edit-module/12/create-quiz', 'admin')
+
+    await chooseQuiz(quizFile())
+
+    expect(await screen.findByRole('status')).toBeInTheDocument()
+    // Questions are saved first, so a failure leaves the quiz archived.
+    expect(writes(fetchMock)).toEqual([
+      ['PUT', '/api/admin/quizzes/5'],
+      ['POST', '/api/admin/quizzes/5/restore'],
+    ])
+  })
+
+  it('explains that the module already has a quiz', async () => {
+    const fetchMock = stubQuizApi({ existing: quizRow(false) })
+    renderPage('/edit-module/12/create-quiz', 'admin')
+
+    await chooseQuiz(quizFile())
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'already has a quiz. Delete it in the module editor',
+    )
+    expect(writes(fetchMock)).toEqual([])
+  })
+
+  it('points to the question and field the server rejects', async () => {
+    stubQuizApi({
+      create: () =>
+        Response.json(
+          {
+            error: {
+              code: 'validation_error',
+              message: 'Request validation failed',
+              details: [
+                {
+                  loc: ['body', 'questions', 1, 'options'],
+                  msg: 'Value error, Exactly one option must be correct',
+                  type: 'value_error',
+                },
+                { loc: ['body', 'questions'], msg: 'Too short', type: 'x' },
+              ],
+            },
+          },
+          { status: 422 },
+        ),
+    })
+    renderPage('/edit-module/12/create-quiz', 'admin')
+
+    await chooseQuiz(quizFile())
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(
+      'Question 2 (options): Value error, Exactly one option must be correct',
+    )
+    expect(alert).toHaveTextContent('Too short')
+    expect(screen.getByLabelText('File contents')).toBeInTheDocument()
+  })
+
+  it('refuses a file that is not a quiz without calling the API', async () => {
+    const fetchMock = stubQuizApi()
+    renderPage('/edit-module/12/create-quiz', 'admin')
+
+    await chooseQuiz(quizFile('not: a quiz'))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'needs a questions list',
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('previews an uploaded quiz as plain text', async () => {
@@ -336,6 +484,22 @@ describe('content creation pages', () => {
     expect(await screen.findByLabelText('File contents')).toHaveTextContent(
       'questions: []',
     )
+  })
+
+  it.each([
+    ['lesson', 'create-lesson'],
+    ['quiz', 'create-quiz'],
+  ])('links the %s page back to editing the module', async (_name, route) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(Response.json(module))),
+    )
+
+    renderPage(`/edit-module/12/${route}`, 'admin')
+
+    expect(
+      await screen.findByRole('link', { name: 'Back to module editing' }),
+    ).toHaveAttribute('href', '/edit-module/12')
   })
 
   it('turns students away without requesting the module', () => {

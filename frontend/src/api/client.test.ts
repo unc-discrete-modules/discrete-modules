@@ -4,22 +4,31 @@ import {
   ApiError,
   createLesson,
   createModule,
+  createQuiz,
   deleteLesson,
   deleteModule,
   deleteQuiz,
+  getAdminQuiz,
   getLesson,
   getModule,
   getQuiz,
   listModuleLessons,
   listModules,
   restoreLesson,
+  restoreQuiz,
   reorderLessons,
+  replaceQuiz,
   reorderModules,
   submitQuiz,
   updateLesson,
   updateModule,
 } from './client'
-import type { Quiz, SubmissionRequest, SubmissionResult } from '@/types/types'
+import type {
+  Quiz,
+  QuizInput,
+  SubmissionRequest,
+  SubmissionResult,
+} from '@/types/types'
 
 const moduleSummary = {
   id: 1,
@@ -333,6 +342,89 @@ describe('learning API client', () => {
         method: 'POST',
         headers: { 'X-CSRF-Token': 'csrf' },
       }),
+    )
+  })
+
+  describe('admin quiz', () => {
+    const questions: QuizInput['questions'] = [
+      { key: 'a', type: 'fill_in_blank', prompt: 'A ____', answer: 'x' },
+    ]
+    const row = (archived: boolean) => ({
+      id: 5,
+      module_id: 12,
+      archived,
+      questions: [],
+    })
+
+    it('reads a module quiz, including an archived one', async () => {
+      const fetch = vi.fn().mockResolvedValue(Response.json(row(true)))
+      vi.stubGlobal('fetch', fetch)
+
+      await expect(getAdminQuiz(12, true)).resolves.toEqual(row(true))
+
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/admin/modules/12/quiz?include_archived=true',
+        expect.objectContaining({ credentials: 'same-origin' }),
+      )
+    })
+
+    it('rejects with a 404 when the module has no quiz', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValue(
+            Response.json(
+              { error: { code: 'not_found', message: 'Quiz not found' } },
+              { status: 404 },
+            ),
+          ),
+      )
+
+      await expect(getAdminQuiz(12, true)).rejects.toMatchObject({
+        status: 404,
+      })
+    })
+
+    it.each([
+      [
+        'creates',
+        () => createQuiz('csrf', 12, { questions }),
+        'POST',
+        '/api/admin/modules/12/quiz',
+        true,
+      ],
+      [
+        'replaces',
+        () => replaceQuiz('csrf', 5, { questions }),
+        'PUT',
+        '/api/admin/quizzes/5',
+        true,
+      ],
+      [
+        'restores',
+        () => restoreQuiz('csrf', 5),
+        'POST',
+        '/api/admin/quizzes/5/restore',
+        false,
+      ],
+    ])(
+      '%s a quiz with the authenticated admin endpoint',
+      async (_name, call, method, path, hasBody) => {
+        const fetch = vi.fn().mockResolvedValue(Response.json(row(false)))
+        vi.stubGlobal('fetch', fetch)
+
+        await expect(call()).resolves.toEqual(row(false))
+
+        expect(fetch).toHaveBeenCalledWith(
+          path,
+          expect.objectContaining({
+            method,
+            headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf' }),
+            ...(hasBody ? { body: JSON.stringify({ questions }) } : {}),
+          }),
+        )
+      },
     )
   })
 

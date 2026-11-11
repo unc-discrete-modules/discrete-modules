@@ -219,3 +219,62 @@ describe('module lesson reorder', () => {
     ).not.toBeInTheDocument()
   })
 })
+
+describe('save errors', () => {
+  const failingApi = (failingPath: string) =>
+    vi.fn((input: RequestInfo | URL) => {
+      if (String(input) === '/api/modules/12') {
+        return Promise.resolve(
+          Response.json({
+            id: 12,
+            title: 'Discrete Math',
+            description: 'Practice',
+            display_order: 0,
+            quiz_id: null,
+            lessons: [
+              { id: 1, title: 'First lesson' },
+              { id: 2, title: 'Second lesson' },
+            ],
+          }),
+        )
+      }
+      if (String(input) === failingPath) {
+        return Promise.resolve(Response.json({}, { status: 500 }))
+      }
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+  it('shows a failed module name save only beside the name', async () => {
+    vi.stubGlobal('fetch', failingApi('/api/admin/modules/12'))
+    render(renderModuleEdit())
+    const nameInput = await screen.findByRole('textbox', { name: 'Module Name' })
+
+    fireEvent.change(nameInput, { target: { value: 'Combinatorics' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Unable to save module name.')
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(
+      alert.compareDocumentPosition(screen.getByText('Lessons')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('shows a failed lesson order save only in the lessons area', async () => {
+    vi.stubGlobal('fetch', failingApi('/api/admin/modules/12/lessons/order'))
+    render(renderModuleEdit())
+    await screen.findByText('First lesson')
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Reorder' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[1])
+
+    const alert = await screen.findByRole('alert')
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(alert).not.toHaveTextContent('module name')
+    expect(
+      screen.getByText('Lessons').compareDocumentPosition(alert) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+})

@@ -1,5 +1,6 @@
 import { apiFetch } from '@/api'
 import type {
+  AdminQuiz,
   ErrorResponse,
   Lesson,
   LessonInput,
@@ -9,6 +10,7 @@ import type {
   ModuleResponse,
   ModuleSummary,
   Quiz,
+  QuizInput,
   SubmissionRequest,
   SubmissionResult,
 } from '@/types/types'
@@ -87,6 +89,16 @@ function isLessonResponse(value: unknown): value is LessonResponse {
     typeof value.title === 'string' &&
     typeof value.position === 'number' &&
     typeof value.archived === 'boolean'
+  )
+}
+
+function isAdminQuiz(value: unknown): value is AdminQuiz {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'number' &&
+    typeof value.module_id === 'number' &&
+    typeof value.archived === 'boolean' &&
+    Array.isArray(value.questions)
   )
 }
 
@@ -317,6 +329,71 @@ export function restoreLesson(
       headers: { 'X-CSRF-Token': csrfToken },
     },
     isLessonResponse,
+  )
+}
+
+// Rejects with a 404 ApiError when the module has no quiz.
+export function getAdminQuiz(
+  moduleId: number,
+  includeArchived: boolean,
+  signal?: AbortSignal,
+): Promise<AdminQuiz> {
+  return requestJson(
+    `/admin/modules/${moduleId}/quiz?include_archived=${includeArchived}`,
+    { signal },
+    isAdminQuiz,
+  )
+}
+
+export function createQuiz(
+  csrfToken: string,
+  moduleId: number,
+  quiz: QuizInput,
+): Promise<AdminQuiz> {
+  return requestJson(
+    `/admin/modules/${moduleId}/quiz`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify(quiz),
+    },
+    isAdminQuiz,
+  )
+}
+
+export function replaceQuiz(
+  csrfToken: string,
+  quizId: number,
+  quiz: QuizInput,
+): Promise<AdminQuiz> {
+  return requestJson(
+    `/admin/quizzes/${quizId}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify(quiz),
+    },
+    isAdminQuiz,
+  )
+}
+
+export function restoreQuiz(
+  csrfToken: string,
+  quizId: number,
+): Promise<AdminQuiz> {
+  return requestJson(
+    `/admin/quizzes/${quizId}/restore`,
+    {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken },
+    },
+    isAdminQuiz,
   )
 }
 

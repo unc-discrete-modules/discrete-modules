@@ -13,9 +13,9 @@ export type CreateContext = {
   csrfToken: string
 }
 
-// Resolves with the lesson that was added, so the page can keep its view of
-// the module current without refetching it.
-export type CreateLesson = (
+// Resolves with the lesson that was added, if any, so the page can keep its
+// view of the module current without refetching it.
+export type CreateContent = (
   file: UploadedFile,
   context: CreateContext,
-) => Promise<LessonSummary>
+) => Promise<LessonSummary | void>
