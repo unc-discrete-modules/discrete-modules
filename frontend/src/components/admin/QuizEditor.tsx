@@ -92,7 +92,7 @@ export default function QuizEditor({ quiz, csrfToken }: QuizEditorProps) {
       <div className="py-5">
         <BackToModuleLink moduleId={quiz.module_id} onClick={confirmLeave} />
         <h1 className="text-3xl font-bold text-muted-navy">Edit quiz</h1>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground mt-3">
           Questions you remove are hidden from students, and the answers they
           already gave are kept.
         </p>
