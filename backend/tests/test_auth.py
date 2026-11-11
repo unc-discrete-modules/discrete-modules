@@ -916,3 +916,25 @@ def test_demo_admin_login_rejected_in_production(client):
     response = client.post("/api/auth/dev-login?admin=true", headers={"Origin": ORIGIN})
     assert response.status_code == 404
     assert client.get("/api/auth/me").status_code == 401
+
+
+def test_lesson_completion_requires_csrf_and_survives_new_sessions(
+    dev_client, auth_lesson
+):
+    headers = {"Origin": "http://localhost:5173"}
+    complete_url = f"/api/lessons/{auth_lesson.id}/complete"
+
+    dev_client.post("/api/auth/dev-login", headers=headers)
+    csrf = dev_client.get("/api/auth/me").json()["csrf_token"]
+    assert dev_client.post(complete_url, headers=headers).status_code == 403
+    done = dev_client.post(complete_url, headers=headers | {"X-CSRF-Token": csrf})
+    assert done.status_code == 200
+    dev_client.post("/api/auth/logout", headers=headers | {"X-CSRF-Token": csrf})
+    assert dev_client.get("/api/me/progress").status_code == 401
+
+    # A new session for the same user sees the earlier completion.
+    dev_client.post("/api/auth/dev-login", headers=headers)
+    mine = {
+        item["module_id"]: item for item in dev_client.get("/api/me/progress").json()
+    }
+    assert mine[auth_lesson.module_id]["completed_lesson_ids"] == [auth_lesson.id]

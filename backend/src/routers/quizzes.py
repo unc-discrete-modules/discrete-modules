@@ -7,13 +7,12 @@ from src.database import get_db_session
 from src.errors import INVALID, NOT_FOUND
 from src.schemas.submission import SubmissionRequest, SubmissionResult
 from src.services import quizzes as quiz_service
-from src.services.auth import AuthenticatedUser, require_user
+from src.services.auth import CurrentUser
 from src.services.grading import SubmissionError
 
 router = APIRouter(prefix="/quizzes", tags=["quizzes"])
 
 SessionDep = Annotated[Session, Depends(get_db_session)]
-CurrentUser = Annotated[AuthenticatedUser, Depends(require_user)]
 
 
 @router.post(
