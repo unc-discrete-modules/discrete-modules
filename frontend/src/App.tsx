@@ -4,6 +4,8 @@ import Lesson from './pages/Lesson'
 import Quiz from './pages/Quiz'
 import Layout from './components/Layout'
 import { CourseProvider } from './context/course-context'
+import { ProgressProvider } from './context/progress-context'
+import { useAuth } from './context/auth-context-value'
 import { AuthProvider } from './context/auth-context'
 import RequireAuth from './components/RequireAuth'
 import Login from './pages/Login'
@@ -17,10 +19,17 @@ import NotFound from './pages/NotFound'
 import ModuleStart from './pages/ModuleStart'
 
 function LearningLayout() {
+  const { state } = useAuth()
+  if (state.status !== 'authenticated') return null
   return (
-    <CourseProvider>
-      <Outlet />
-    </CourseProvider>
+    <ProgressProvider
+      key={`${state.user.id}:${state.user.csrf_token}`}
+      csrfToken={state.user.csrf_token}
+    >
+      <CourseProvider>
+        <Outlet />
+      </CourseProvider>
+    </ProgressProvider>
   )
 }
 

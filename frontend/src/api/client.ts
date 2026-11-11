@@ -3,10 +3,12 @@ import type {
   AdminQuiz,
   ErrorResponse,
   Lesson,
+  LessonCompletionResponse,
   LessonInput,
   LessonPatch,
   LessonResponse,
   Module,
+  ModuleProgress,
   ModuleResponse,
   ModuleSummary,
   Quiz,
@@ -190,6 +192,46 @@ async function requestJson<T>(
     )
   }
   return value as T
+}
+
+export function getMyProgress(signal?: AbortSignal): Promise<ModuleProgress[]> {
+  return requestJson(
+    '/me/progress',
+    { signal },
+    (value): value is ModuleProgress[] =>
+      Array.isArray(value) &&
+      value.every(
+        (item: unknown) =>
+          isRecord(item) &&
+          typeof item.module_id === 'number' &&
+          typeof item.lesson_count === 'number' &&
+          Array.isArray(item.completed_lesson_ids) &&
+          item.completed_lesson_ids.every(
+            (id: unknown) => typeof id === 'number',
+          ) &&
+          (item.best_quiz_attempt === null ||
+            (isRecord(item.best_quiz_attempt) &&
+              typeof item.best_quiz_attempt.score === 'number' &&
+              typeof item.best_quiz_attempt.max_score === 'number')),
+      ),
+  )
+}
+
+export function completeLesson(
+  lessonId: number,
+  csrfToken: string,
+): Promise<LessonCompletionResponse> {
+  return requestJson(
+    `/lessons/${lessonId}/complete`,
+    {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken },
+    },
+    (value): value is LessonCompletionResponse =>
+      isRecord(value) &&
+      value.lesson_id === lessonId &&
+      typeof value.completed_at === 'number',
+  )
 }
 
 export function listModules(signal?: AbortSignal): Promise<ModuleSummary[]> {

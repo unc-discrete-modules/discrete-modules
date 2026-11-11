@@ -1,6 +1,8 @@
 import type { components } from '@/api/schema'
 
 type Schemas = components['schemas']
+export type ModuleProgress = Schemas['ModuleProgress']
+export type LessonCompletionResponse = Schemas['LessonCompletionResponse']
 export type Lesson = Schemas['Lesson']
 export type LessonSummary = Schemas['LessonSummary']
 export type ModuleSummary = Schemas['ModuleSummary']

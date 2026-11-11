@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SESSION_EXPIRED } from '@/api'
 import {
   ApiError,
+  completeLesson,
+  getMyProgress,
   createLesson,
   createModule,
   createQuiz,
@@ -103,6 +105,50 @@ describe('learning API client', () => {
       )
     },
   )
+
+  it('loads progress and saves lesson completion with the CSRF token', async () => {
+    const progress = [
+      {
+        module_id: 1,
+        lesson_count: 2,
+        completed_lesson_ids: [3],
+        best_quiz_attempt: null,
+      },
+    ]
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(progress))
+      .mockResolvedValueOnce(Response.json({ lesson_id: 3, completed_at: 123 }))
+    vi.stubGlobal('fetch', fetch)
+    await expect(getMyProgress()).resolves.toEqual(progress)
+    await expect(completeLesson(3, 'csrf')).resolves.toEqual({
+      lesson_id: 3,
+      completed_at: 123,
+    })
+    expect(fetch).toHaveBeenLastCalledWith(
+      '/api/lessons/3/complete',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'X-CSRF-Token': 'csrf' },
+        credentials: 'same-origin',
+      }),
+    )
+  })
+
+  it('reports errors and rejects invalid progress responses', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json(
+          { error: { code: 'forbidden', message: 'Denied' } },
+          { status: 403 },
+        ),
+      )
+      .mockResolvedValueOnce(Response.json([{ module_id: 1 }]))
+    vi.stubGlobal('fetch', fetch)
+    await expect(completeLesson(3, 'csrf')).rejects.toThrow('Denied')
+    await expect(getMyProgress()).rejects.toThrow('invalid response')
+  })
 
   it('submits all answer types and returns nullable self-check feedback', async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json(result))
