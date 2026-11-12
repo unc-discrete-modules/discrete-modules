@@ -7,7 +7,6 @@ def test_lesson_detail_uses_database_content_and_position_links(client, db_sessi
     module = Module(
         key=f"lesson-test-{uuid4().hex}",
         title="Logic",
-        description="Test module.",
         position=2_000_000_000,
     )
     db_session.add(module)
@@ -47,7 +46,6 @@ def test_lesson_links_stay_within_module_and_expose_video(client, db_session):
     module = Module(
         key=f"lesson-links-{uuid4().hex}",
         title="Logic",
-        description="Test module.",
         position=2_000_000_001,
     )
     db_session.add(module)

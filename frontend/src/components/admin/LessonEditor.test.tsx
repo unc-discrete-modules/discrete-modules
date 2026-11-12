@@ -25,7 +25,6 @@ const lesson: LessonResponse = {
 const module: Module = {
   id: 9,
   title: 'Proofs',
-  description: 'Write proofs',
   display_order: 9,
   quiz_id: null,
   lessons: [

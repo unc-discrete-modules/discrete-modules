@@ -72,7 +72,6 @@ def auth_lesson(db_session):
     module = Module(
         key=f"auth-test-{uuid4().hex}",
         title="Auth",
-        description="Auth test module",
         position=2_000_000_000,
     )
     db_session.add(module)

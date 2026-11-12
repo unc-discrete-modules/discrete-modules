@@ -9,7 +9,7 @@ directory into PostgreSQL. Only the lesson images are read at request time.
 ```text
 content/
   09-proofs/                 one folder per module: NN-<module-key>
-    module.yaml              title and description
+    module.yaml              the module title
     01-proofs.md             one file per lesson: NN-<lesson-key>.md
     02-proofs-continued.md
     quiz.yaml                optional; one quiz per module
@@ -25,12 +25,10 @@ across the directory, and lesson prefixes unique within a module.
 
 ## Modules
 
-`module.yaml` has exactly two fields:
+`module.yaml` has exactly one field:
 
 ```yaml
 title: Proofs
-description: >-
-  Write structured two-column proofs: direct proofs, contradiction, and more.
 ```
 
 ## Lessons

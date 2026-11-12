@@ -30,12 +30,10 @@ class Input(BaseModel):
 class ModuleInput(Input):
     key: Key
     title: Title
-    description: Text
 
 
 class ModulePatch(Input):
     title: Title | None = None
-    description: Text | None = None
 
 
 class LessonBodyMixin(BaseModel):
@@ -106,7 +104,6 @@ class ModuleResponse(BaseModel):
     id: int
     key: str
     title: str
-    description: str
     position: int
     archived: bool
 

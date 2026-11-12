@@ -96,7 +96,6 @@ def sync_content(session: Session, records: list[ModuleRecord]) -> SeedSummary:
         module = Module(
             key=record.key,
             title=record.title,
-            description=record.description,
             position=position,
         )
         session.add(module)

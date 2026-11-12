@@ -20,7 +20,6 @@ describe('ModuleCreationDialog', () => {
           id: 12,
           key: 'logic-proofs',
           title: 'Logic & Proofs',
-          description: 'Default description.',
           position: 0,
         },
         { status: 201 },
@@ -82,7 +81,6 @@ describe('ModuleCreationDialog', () => {
         body: JSON.stringify({
           key: 'logic-proofs',
           title: 'Logic & Proofs',
-          description: 'Default description.',
         }),
         credentials: 'same-origin',
       }),

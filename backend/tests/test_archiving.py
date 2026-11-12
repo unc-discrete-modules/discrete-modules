@@ -25,9 +25,7 @@ def api(client):
 
 def make_module(api, key=None):
     key = f"{key or 'm'}-{uuid4().hex[:12]}"
-    response = api.post(
-        "/api/admin/modules", json={"key": key, "title": key, "description": "D"}
-    )
+    response = api.post("/api/admin/modules", json={"key": key, "title": key})
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -205,9 +203,7 @@ def test_archived_content_cannot_be_recreated_or_extended(api):
     ):
         assert response.status_code == 409 and "archived" in response.text
     key = module["key"]
-    reuse = api.post(
-        "/api/admin/modules", json={"key": key, "title": "T", "description": "D"}
-    )
+    reuse = api.post("/api/admin/modules", json={"key": key, "title": "T"})
     assert reuse.status_code == 409 and "restore" in reuse.text
 
 

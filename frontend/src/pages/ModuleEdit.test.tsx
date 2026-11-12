@@ -1,5 +1,11 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AuthContext } from '@/context/auth-context-value'
@@ -107,7 +113,6 @@ describe('module lesson reorder', () => {
           Response.json({
             id: 12,
             title: 'Discrete Math',
-            description: 'Practice',
             display_order: 0,
             quiz_id: 3,
             lessons: [],
@@ -120,7 +125,6 @@ describe('module lesson reorder', () => {
             id: 12,
             key: 'discrete-math',
             title: 'Combinatorics',
-            description: 'Practice',
             position: 0,
           }),
         )
@@ -131,7 +135,9 @@ describe('module lesson reorder', () => {
 
     render(renderModuleEdit())
 
-    const nameInput = await screen.findByRole('textbox', { name: 'Module Name' })
+    const nameInput = await screen.findByRole('textbox', {
+      name: 'Module Name',
+    })
     expect(nameInput).toHaveValue('Discrete Math')
     fireEvent.change(nameInput, { target: { value: 'Combinatorics' } })
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
@@ -143,7 +149,6 @@ describe('module lesson reorder', () => {
           method: 'PATCH',
           body: JSON.stringify({
             title: 'Combinatorics',
-            description: 'Practice',
           }),
         }),
       )
@@ -158,7 +163,6 @@ describe('module lesson reorder', () => {
           Response.json({
             id: 12,
             title: 'Discrete Math',
-            description: 'Practice',
             display_order: 0,
             quiz_id: 3,
             lessons: [
@@ -186,9 +190,10 @@ describe('module lesson reorder', () => {
       screen.getAllByRole('button', { name: 'Move first lesson down' })[0],
     )
     expect(
-      screen.getByText('Second lesson').compareDocumentPosition(
-        screen.getByText('First lesson'),
-      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      screen
+        .getByText('Second lesson')
+        .compareDocumentPosition(screen.getByText('First lesson')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(
       screen.getByRole('button', { name: 'Reorder lesson First lesson' }),
@@ -228,7 +233,6 @@ describe('save errors', () => {
           Response.json({
             id: 12,
             title: 'Discrete Math',
-            description: 'Practice',
             display_order: 0,
             quiz_id: null,
             lessons: [
@@ -247,7 +251,9 @@ describe('save errors', () => {
   it('shows a failed module name save only beside the name', async () => {
     vi.stubGlobal('fetch', failingApi('/api/admin/modules/12'))
     render(renderModuleEdit())
-    const nameInput = await screen.findByRole('textbox', { name: 'Module Name' })
+    const nameInput = await screen.findByRole('textbox', {
+      name: 'Module Name',
+    })
 
     fireEvent.change(nameInput, { target: { value: 'Combinatorics' } })
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])

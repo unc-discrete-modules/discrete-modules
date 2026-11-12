@@ -60,7 +60,6 @@ function stubApi(
         Response.json({
           id: 12,
           title: 'Discrete Math',
-          description: 'Practice',
           display_order: 0,
           quiz_id: state.quizId,
           lessons: state.lessons,

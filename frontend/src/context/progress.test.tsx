@@ -25,7 +25,6 @@ vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }))
 const moduleDetails = {
   id: 8,
   title: 'Sets',
-  description: 'Sets',
   display_order: 0,
   quiz_id: 9,
   lessons: [

@@ -17,11 +17,8 @@ import { useAuth } from '@/context/auth-context-value'
 import { useModules } from '@/hooks/use-modules'
 import CreateButton from './CreateButton'
 
-const DEFAULT_DESCRIPTION = 'Default description.'
-
 export function ModuleCreationDialog() {
   const [nameInvalid, setNameInvalid] = useState(false)
-  const [descriptionInvalid, setDescriptionInvalid] = useState(false)
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -39,7 +36,6 @@ export function ModuleCreationDialog() {
 
     const formData = new FormData(event.currentTarget)
     const title = String(formData.get('name') ?? '').trim()
-    const description = String(formData.get('description') ?? '').trim()
     const key = title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -50,11 +46,6 @@ export function ModuleCreationDialog() {
       return
     }
 
-    if (!description) {
-      setDescriptionInvalid(true)
-      return
-    }
-
     if (key.length > 100) {
       setError('The module name is too long to create a module key.')
       return
@@ -62,7 +53,7 @@ export function ModuleCreationDialog() {
 
     setSubmitting(true)
     try {
-      await createModule(authState.user.csrf_token, key, title, description)
+      await createModule(authState.user.csrf_token, key, title)
       retry()
       setOpen(false)
     } catch (error) {
@@ -93,7 +84,7 @@ export function ModuleCreationDialog() {
             </DialogTitle>
           </DialogHeader>
           <FieldGroup>
-            <Field>
+            <Field className="pb-5">
               <Label htmlFor="name">Module Name</Label>
               <Input
                 id="name"
@@ -121,39 +112,6 @@ export function ModuleCreationDialog() {
                   className="rounded-sm bg-red-50 px-2 py-1 text-sm text-red-700"
                 >
                   Please enter a module name.
-                </p>
-              )}
-            </Field>
-            <Field className="pb-5">
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                name="description"
-                defaultValue={DEFAULT_DESCRIPTION}
-                placeholder="Enter description..."
-                className="rounded-sm border-2 border-stone-200 bg-white aria-invalid:border-stone-200 aria-invalid:ring-0"
-                aria-invalid={descriptionInvalid}
-                aria-describedby={
-                  descriptionInvalid ? 'description-error' : undefined
-                }
-                required
-                onInvalid={(event) => {
-                  event.preventDefault()
-                  setDescriptionInvalid(true)
-                }}
-                onChange={(event) => {
-                  if (event.currentTarget.validity.valid) {
-                    setDescriptionInvalid(false)
-                  }
-                }}
-              />
-              {descriptionInvalid && (
-                <p
-                  id="description-error"
-                  role="alert"
-                  className="rounded-sm bg-red-50 px-2 py-1 text-sm text-red-700"
-                >
-                  Please enter a module description.
                 </p>
               )}
             </Field>

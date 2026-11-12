@@ -51,7 +51,6 @@ function isModuleSummary(value: unknown): value is ModuleSummary {
     isRecord(value) &&
     typeof value.id === 'number' &&
     typeof value.title === 'string' &&
-    typeof value.description === 'string' &&
     typeof value.display_order === 'number'
   )
 }
@@ -78,7 +77,6 @@ function isModuleResponse(value: unknown): value is ModuleResponse {
     typeof value.id === 'number' &&
     typeof value.key === 'string' &&
     typeof value.title === 'string' &&
-    typeof value.description === 'string' &&
     typeof value.position === 'number'
   )
 }
@@ -305,9 +303,8 @@ export function createModule(
   csrfToken: string,
   key: string,
   title: string,
-  description: string,
 ): Promise<ModuleResponse> {
-  const body = { key, title, description }
+  const body = { key, title }
   return requestJson(
     '/admin/modules',
     {
@@ -464,9 +461,8 @@ export function updateModule(
   csrfToken: string,
   moduleId: number,
   title: string,
-  description: string,
 ): Promise<ModuleResponse> {
-  const body = { title, description }
+  const body = { title }
   return requestJson(
     `/admin/modules/${moduleId}`,
     {

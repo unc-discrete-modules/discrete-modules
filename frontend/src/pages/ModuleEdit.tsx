@@ -85,7 +85,6 @@ export default function ModuleEdit() {
         authState.user.csrf_token,
         module.id,
         moduleName,
-        module.description,
       )
       setEditedModuleName({ moduleId: module.id, title: updatedModule.title })
       updateModuleTitle(module.id, updatedModule.title)

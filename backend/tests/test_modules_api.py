@@ -10,10 +10,11 @@ def test_modules_are_listed_in_display_order(client, db_session):
 
     assert response.status_code == 200
     listed = [m for m in response.json() if m["id"] in {later.id, earlier.id}]
-    assert [(m["id"], m["title"], m["description"]) for m in listed] == [
-        (earlier.id, "Logic", "About Logic."),
-        (later.id, "Graphs", "About Graphs."),
+    assert [(m["id"], m["title"]) for m in listed] == [
+        (earlier.id, "Logic"),
+        (later.id, "Graphs"),
     ]
+    assert all("description" not in m for m in listed)
     assert [m["display_order"] for m in response.json()] == list(
         range(len(response.json()))
     )
@@ -37,7 +38,6 @@ def test_module_detail_lists_lessons_in_order(client, db_session):
     assert response.json() == {
         "id": module.id,
         "title": "Logic",
-        "description": "About Logic.",
         "display_order": listed_ids.index(module.id),
         "quiz_id": module.quiz.id,
         "lessons": [
