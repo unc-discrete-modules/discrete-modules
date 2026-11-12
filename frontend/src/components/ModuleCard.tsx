@@ -6,16 +6,29 @@ import type { ModuleSummary } from '@/types/types'
 import { Badge } from './ui/badge'
 import { Link } from 'react-router-dom'
 import { useModule } from '@/hooks/use-modules'
+import { useProgress } from '@/context/progress-context-value'
 
 type ModuleCardProps = {
   module: ModuleSummary
 }
 
-const progress = 60 // placeholder value
-
 export default function ModuleCard({ module }: ModuleCardProps) {
   const { module: details } = useModule(module.id)
-  const firstLessonId = details?.lessons[0]?.id
+  const progressState = useProgress()
+  const progress = progressState?.progress?.find(
+    (item) => item.module_id === module.id,
+  )
+  const completed = new Set(progress?.completed_lesson_ids ?? [])
+  const firstLessonId = progress
+    ? (details?.lessons.find((lesson) => !completed.has(lesson.id))?.id ??
+      details?.lessons[0]?.id)
+    : details?.lessons[0]?.id
+  const percentage =
+    progress && progress.lesson_count > 0
+      ? Math.round(
+          (progress.completed_lesson_ids.length / progress.lesson_count) * 100,
+        )
+      : null
 
   const card = (
     <Card className="w-full overflow-hidden p-0 gap-0">
@@ -31,15 +44,32 @@ export default function ModuleCard({ module }: ModuleCardProps) {
         </Badge>
       </div>
 
-      {/* Progress row */}
       <CardContent className="flex items-center gap-3 py-4">
-        <Label className="shrink-0 text-sm text-muted-foreground">
-          Progress
-        </Label>
-        <Progress value={progress} className="flex-1" />
-        <span className="shrink-0 text-sm font-medium text-blue-600">
-          {progress}%
-        </span>
+        {progress ? (
+          progress.lesson_count === 0 ? (
+            <span className="text-sm text-muted-foreground">No lessons</span>
+          ) : (
+            <>
+              <Label className="shrink-0 text-sm text-muted-foreground">
+                Progress
+              </Label>
+              <Progress
+                value={percentage ?? 0}
+                className="flex-1"
+                aria-label={`Module ${module.display_order + 1} progress`}
+              />
+              <span className="shrink-0 text-sm font-medium text-blue-600">
+                {percentage}%
+              </span>
+            </>
+          )
+        ) : (
+          <span className="text-sm text-muted-foreground">
+            {progressState?.loading
+              ? 'Loading progress...'
+              : 'Progress unavailable'}
+          </span>
+        )}
       </CardContent>
     </Card>
   )
