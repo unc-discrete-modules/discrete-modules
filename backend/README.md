@@ -64,8 +64,11 @@ uv run python -m src.seed --check   # validate only; no database needed
 uv run python -m src.seed           # insert missing module trees into DATABASE_URL
 ```
 
-The seed skips any module whose key already exists, preserving its entire database
-content tree, including archived modules. New modules are appended in file order.
+The seed inserts modules whose key is missing, appending them in file order, and
+never reinserts an archived module. For modules that already exist it also refreshes
+each lesson's title, body and video from the files, unless that lesson was edited in
+the database since the seed last wrote it; those are listed in the output and left
+unchanged. Quizzes, module details and lesson order are never changed.
 `CONTENT_DIR` (or `--content-dir`) selects another directory. Manage existing
 content through the admin API.
 

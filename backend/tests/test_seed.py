@@ -136,3 +136,89 @@ def test_seed_does_not_reinsert_archived_module(db_session):
     assert summary.modules == 0
     rows = db_session.exec(select(Module).where(Module.key == "sets")).all()
     assert [r.archived for r in rows] == [True]
+
+
+def stored_lesson(session, module_key="sets", key="intro"):
+    session.expire_all()
+    return session.exec(
+        select(Lesson).join(Module).where(Module.key == module_key, Lesson.key == key)
+    ).one()
+
+
+def test_seed_updates_lessons_that_were_not_edited(db_session):
+    sync_content(db_session, [module("sets", 1, [lesson("intro", 1, "Old")])])
+
+    summary = sync_content(db_session, [module("sets", 1, [lesson("intro", 1, "New")])])
+
+    assert summary.lessons_updated == 1
+    assert summary.lessons_kept == ()
+    assert stored_lesson(db_session).body == "New"
+
+
+def test_seed_keeps_lessons_edited_in_the_database(db_session):
+    sync_content(db_session, [module("sets", 1, [lesson("intro", 1, "Old")])])
+    stored_lesson(db_session).body = "Edited by an admin"
+    db_session.flush()
+
+    summary = sync_content(db_session, [module("sets", 1, [lesson("intro", 1, "New")])])
+
+    assert summary.lessons_updated == 0
+    assert summary.lessons_kept == ("sets/intro",)
+    assert stored_lesson(db_session).body == "Edited by an admin"
+
+
+def test_seed_keeps_edits_across_repeated_runs(db_session):
+    sync_content(db_session, [module("sets", 1, [lesson("intro", 1, "Old")])])
+    stored_lesson(db_session).body = "Edited"
+    db_session.flush()
+    records = [module("sets", 1, [lesson("intro", 1, "New")])]
+
+    sync_content(db_session, records)
+    summary = sync_content(db_session, records)
+
+    assert summary.lessons_kept == ("sets/intro",)
+    assert stored_lesson(db_session).body == "Edited"
+
+
+def test_seed_updates_again_after_a_later_file_change(db_session):
+    sync_content(db_session, [module("sets", 1, [lesson("intro", 1, "v1")])])
+    sync_content(db_session, [module("sets", 1, [lesson("intro", 1, "v2")])])
+
+    sync_content(db_session, [module("sets", 1, [lesson("intro", 1, "v3")])])
+
+    assert stored_lesson(db_session).body == "v3"
+
+
+def test_seed_adopts_unhashed_lessons_that_already_match_the_file(db_session):
+    sync_content(db_session, [module("sets", 1, [lesson("intro", 1, "Same")])])
+    stored_lesson(db_session).seed_hash = None
+    db_session.flush()
+    sync_content(db_session, [module("sets", 1, [lesson("intro", 1, "Same")])])
+
+    summary = sync_content(db_session, [module("sets", 1, [lesson("intro", 1, "New")])])
+
+    assert summary.lessons_updated == 1
+    assert stored_lesson(db_session).body == "New"
+
+
+def test_seed_keeps_unhashed_lessons_that_differ_from_the_file(db_session):
+    sync_content(db_session, [module("sets", 1, [lesson("intro", 1, "Old")])])
+    stored_lesson(db_session).seed_hash = None
+    db_session.flush()
+
+    summary = sync_content(db_session, [module("sets", 1, [lesson("intro", 1, "New")])])
+
+    assert summary.lessons_kept == ("sets/intro",)
+    assert stored_lesson(db_session).body == "Old"
+
+
+def test_seed_does_not_update_archived_lessons_or_modules(db_session):
+    records = [module("sets", 1, [lesson("intro", 1, "Old")])]
+    sync_content(db_session, records)
+    stored_lesson(db_session).archived = True
+    db_session.flush()
+
+    summary = sync_content(db_session, [module("sets", 1, [lesson("intro", 1, "New")])])
+
+    assert summary.lessons_updated == 0
+    assert stored_lesson(db_session).body == "Old"

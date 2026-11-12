@@ -83,6 +83,9 @@ class Lesson(ModelBase, table=True):
         default=False,
         sa_column_kwargs={"server_default": false()},
     )
+    # Fingerprint of the content the seed last wrote. A row whose current content
+    # no longer matches it was edited in the database and is never overwritten.
+    seed_hash: str | None = Field(default=None, max_length=64)
 
     module: Module = Relationship(back_populates="lessons")
 
