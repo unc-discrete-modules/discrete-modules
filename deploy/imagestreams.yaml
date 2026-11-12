@@ -7,7 +7,7 @@ spec:
     - name: latest
       from:
         kind: DockerImage
-        name: ghcr.io/1drturtle/discrete-modules-frontend:latest
+        name: ghcr.io/unc-discrete-modules/discrete-modules-frontend:latest
       importPolicy:
         scheduled: true
 ---
@@ -20,6 +20,6 @@ spec:
     - name: latest
       from:
         kind: DockerImage
-        name: ghcr.io/1drturtle/discrete-modules-backend:latest
+        name: ghcr.io/unc-discrete-modules/discrete-modules-backend:latest
       importPolicy:
         scheduled: true

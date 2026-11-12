@@ -27,7 +27,7 @@ spec:
       restartPolicy: Always
       initContainers:
         - name: migrate
-          image: ghcr.io/1drturtle/discrete-modules-backend:latest
+          image: ghcr.io/unc-discrete-modules/discrete-modules-backend:latest
           imagePullPolicy: Always
           command:
             - alembic
@@ -53,7 +53,7 @@ spec:
                 - ALL
             runAsNonRoot: true
         - name: seed
-          image: ghcr.io/1drturtle/discrete-modules-backend:latest
+          image: ghcr.io/unc-discrete-modules/discrete-modules-backend:latest
           imagePullPolicy: Always
           command:
             - python
@@ -83,7 +83,7 @@ spec:
             runAsNonRoot: true
       containers:
         - name: backend
-          image: ghcr.io/1drturtle/discrete-modules-backend:latest
+          image: ghcr.io/unc-discrete-modules/discrete-modules-backend:latest
           imagePullPolicy: Always
           ports:
             - name: http

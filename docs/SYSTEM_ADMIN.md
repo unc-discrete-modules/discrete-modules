@@ -28,8 +28,8 @@ This manual is for administrators deploying and operating Discrete Modules on UN
 2. Clone it and enter the directory:
 
    ```sh
-   git clone https://github.com/1drturtle/comp523-discrete-modules.git
-   cd comp523-discrete-modules
+   git clone https://github.com/unc-discrete-modules/discrete-modules.git
+   cd discrete-modules
    ```
 
 ## Deploy to a new UNC Cloud Apps project

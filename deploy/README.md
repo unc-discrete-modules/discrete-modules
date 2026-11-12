@@ -87,8 +87,8 @@ also updates the database password when the PostgreSQL pod restarts.
 ## Apply the manifests
 
 The application images in the Deployment and ImageStream manifests use
-`ghcr.io/1drturtle/discrete-modules-frontend:latest` and
-`ghcr.io/1drturtle/discrete-modules-backend:latest`. If your images are published
+`ghcr.io/unc-discrete-modules/discrete-modules-frontend:latest` and
+`ghcr.io/unc-discrete-modules/discrete-modules-backend:latest`. If your images are published
 under a different registry or owner, update both references for each image. The
 PostgreSQL image is configured separately in `postgres.yaml`.
 
