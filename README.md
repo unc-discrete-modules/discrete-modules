@@ -3,6 +3,8 @@
 Discrete Modules is a browser-based learning application for discrete mathematics.
 The local stack consists of a React/Vite client, a FastAPI API, and PostgreSQL.
 
+**[Click here to access the document homepage](./docs/HOME.md)**
+
 ## Local development
 
 Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or
