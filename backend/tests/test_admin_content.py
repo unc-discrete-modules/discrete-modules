@@ -16,16 +16,14 @@ def test_admin_content_crud_and_order(client):
     def create(key):
         response = client.post(
             "/api/admin/modules",
-            json={"key": key, "title": key, "description": "Description"},
+            json={"key": key, "title": key},
         )
         assert response.status_code == 201, response.text
         return response.json()["id"]
 
     existing_ids = [row["id"] for row in client.get("/api/admin/modules").json()]
     a, b = create("a"), create("b")
-    conflict = client.post(
-        "/api/admin/modules", json={"key": "a", "title": "A", "description": "D"}
-    )
+    conflict = client.post("/api/admin/modules", json={"key": "a", "title": "A"})
     assert conflict.status_code == 409
     assert conflict.json()["error"]["code"] == "conflict"
     assert (
@@ -65,7 +63,7 @@ def test_admin_content_crud_and_order(client):
 def test_quiz_replace_and_validate(client):
     admin(client)
     module = client.post(
-        "/api/admin/modules", json={"key": "quiz", "title": "Quiz", "description": "D"}
+        "/api/admin/modules", json={"key": "quiz", "title": "Quiz"}
     ).json()
     question = {
         "key": "first",
@@ -125,7 +123,7 @@ def test_quiz_replacement_reorders_and_preserves_retained_ids(client):
     admin(client)
     module = client.post(
         "/api/admin/modules",
-        json={"key": "reorder", "title": "Quiz", "description": "D"},
+        json={"key": "reorder", "title": "Quiz"},
     ).json()
 
     def question(key):
@@ -167,7 +165,7 @@ def test_lesson_order_and_archive(client):
     admin(client)
     module = client.post(
         "/api/admin/modules",
-        json={"key": "lessons", "title": "Lessons", "description": "D"},
+        json={"key": "lessons", "title": "Lessons"},
     ).json()
     base = f"/api/admin/modules/{module['id']}/lessons"
     ids = []
@@ -192,7 +190,7 @@ def test_module_update_and_quiz_archive(client):
     admin(client)
     module = client.post(
         "/api/admin/modules",
-        json={"key": "edit", "title": "Before", "description": "D"},
+        json={"key": "edit", "title": "Before"},
     ).json()
     updated = client.patch(
         f"/api/admin/modules/{module['id']}", json={"title": "After"}
@@ -214,3 +212,14 @@ def test_module_update_and_quiz_archive(client):
     ).json()
     assert client.delete(f"/api/admin/quizzes/{quiz['id']}").status_code == 204
     assert client.get(f"/api/admin/modules/{module['id']}/quiz").status_code == 404
+
+
+def test_module_description_is_no_longer_accepted(client):
+    admin(client)
+
+    response = client.post(
+        "/api/admin/modules",
+        json={"key": "sets", "title": "Sets", "description": "Old field"},
+    )
+
+    assert response.status_code == 422

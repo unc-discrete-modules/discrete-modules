@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
+  annotations:
+    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"discrete-modules-frontend:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"frontend\")].image"}]'
   labels:
     app.kubernetes.io/name: discrete-modules
     app.kubernetes.io/component: frontend
@@ -24,7 +26,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: frontend
-          image: ghcr.io/1drturtle/discrete-modules-frontend:latest
+          image: ghcr.io/unc-discrete-modules/discrete-modules-frontend:latest
           imagePullPolicy: Always
           ports:
             - name: http

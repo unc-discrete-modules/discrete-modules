@@ -20,7 +20,6 @@ import Lesson from './Lesson'
 const summary = {
   id: 1,
   title: 'Proofs',
-  description: 'Practice',
   display_order: 0,
 }
 const moduleDetails = {

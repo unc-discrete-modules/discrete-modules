@@ -64,8 +64,11 @@ uv run python -m src.seed --check   # validate only; no database needed
 uv run python -m src.seed           # insert missing module trees into DATABASE_URL
 ```
 
-The seed skips any module whose key already exists, preserving its entire database
-content tree, including archived modules. New modules are appended in file order.
+The seed inserts modules whose key is missing, appending them in file order, and
+never reinserts an archived module. For modules that already exist it also refreshes
+each lesson's title, body and video from the files, unless that lesson was edited in
+the database since the seed last wrote it; those are listed in the output and left
+unchanged. Quizzes, module details and lesson order are never changed.
 `CONTENT_DIR` (or `--content-dir`) selects another directory. Manage existing
 content through the admin API.
 
@@ -81,6 +84,20 @@ Submitting a quiz (`POST /api/quizzes/{id}/submissions`) grades the answers and
 records a `quiz_attempts` row with one `question_responses` row per question for
 the signed-in user. The score counts correct auto-graded questions; free responses
 are stored but never scored.
+
+Progress is per signed-in user. `POST /api/lessons/{id}/complete` marks a lesson
+complete and is safe to repeat; it keeps the first completion time.
+`GET /api/modules/{id}/progress` and `GET /api/me/progress` report completed
+lessons and the best quiz attempt (by score fraction, ties to the latest) for one
+module or every visible module. Archived lessons and quizzes are left out of the
+results, but their stored rows return when the content is restored.
+
+`GET /api/admin/progress` (administrators only) aggregates progress across students
+without identifying anyone. For each visible module it reports how many students
+started it, the average share of its lessons completed (students who have not
+started count as 0), how many attempted its quiz, and up to five auto-graded
+questions with the highest miss rate, ignoring questions answered fewer than three
+times. Admin accounts are not counted as students.
 
 ## Application database sessions
 

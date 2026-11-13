@@ -1,11 +1,18 @@
 import type { components } from '@/api/schema'
 
 type Schemas = components['schemas']
+export type ModuleProgress = Schemas['ModuleProgress']
+export type LessonCompletionResponse = Schemas['LessonCompletionResponse']
 export type Lesson = Schemas['Lesson']
 export type LessonSummary = Schemas['LessonSummary']
 export type ModuleSummary = Schemas['ModuleSummary']
 export type Module = Schemas['Module']
 export type ModuleResponse = Schemas['ModuleResponse']
+export type LessonInput = Schemas['LessonInput']
+export type LessonPatch = Schemas['LessonPatch']
+export type QuizInput = Schemas['QuizInput']
+export type AdminQuiz = Schemas['QuizResponse']
+export type LessonResponse = Schemas['LessonResponse']
 export type Quiz = Schemas['Quiz']
 export type Question = Quiz['questions'][number]
 export type AnswerOption = Schemas['AnswerOption']

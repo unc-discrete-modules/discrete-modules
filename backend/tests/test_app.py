@@ -116,8 +116,19 @@ def test_lesson_images_are_served_from_the_content_directory(tmp_path, monkeypat
     assert missing.status_code == 404
 
 
-def test_app_starts_without_a_content_directory(tmp_path, monkeypatch):
+def test_development_app_starts_without_a_content_directory(tmp_path, monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "development")
     monkeypatch.setenv("CONTENT_DIR", str(tmp_path / "absent"))
 
     with TestClient(create_app()) as client:
         assert client.get("/api/").status_code == 200
+
+
+def test_production_app_refuses_to_start_without_a_content_directory(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("CONTENT_DIR", str(tmp_path / "absent"))
+
+    with pytest.raises(RuntimeError, match="CONTENT_DIR"):
+        create_app()

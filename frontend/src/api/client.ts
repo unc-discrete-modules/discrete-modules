@@ -1,11 +1,18 @@
 import { apiFetch } from '@/api'
 import type {
+  AdminQuiz,
   ErrorResponse,
   Lesson,
+  LessonCompletionResponse,
+  LessonInput,
+  LessonPatch,
+  LessonResponse,
   Module,
+  ModuleProgress,
   ModuleResponse,
   ModuleSummary,
   Quiz,
+  QuizInput,
   SubmissionRequest,
   SubmissionResult,
 } from '@/types/types'
@@ -44,7 +51,6 @@ function isModuleSummary(value: unknown): value is ModuleSummary {
     isRecord(value) &&
     typeof value.id === 'number' &&
     typeof value.title === 'string' &&
-    typeof value.description === 'string' &&
     typeof value.display_order === 'number'
   )
 }
@@ -71,8 +77,41 @@ function isModuleResponse(value: unknown): value is ModuleResponse {
     typeof value.id === 'number' &&
     typeof value.key === 'string' &&
     typeof value.title === 'string' &&
-    typeof value.description === 'string' &&
     typeof value.position === 'number'
+  )
+}
+
+function isLessonResponse(value: unknown): value is LessonResponse {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'number' &&
+    typeof value.module_id === 'number' &&
+    typeof value.key === 'string' &&
+    typeof value.title === 'string' &&
+    typeof value.body === 'string' &&
+    (value.video_url === null || typeof value.video_url === 'string') &&
+    typeof value.position === 'number' &&
+    typeof value.archived === 'boolean'
+  )
+}
+
+function isAdminQuiz(value: unknown): value is AdminQuiz {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'number' &&
+    typeof value.module_id === 'number' &&
+    typeof value.archived === 'boolean' &&
+    Array.isArray(value.questions) &&
+    value.questions.every(
+      (question: unknown) =>
+        isRecord(question) &&
+        typeof question.key === 'string' &&
+        typeof question.type === 'string' &&
+        typeof question.prompt === 'string' &&
+        typeof question.archived === 'boolean' &&
+        (question.answer === null || typeof question.answer === 'string') &&
+        (question.options === null || Array.isArray(question.options)),
+    )
   )
 }
 
@@ -153,6 +192,46 @@ async function requestJson<T>(
   return value as T
 }
 
+export function getMyProgress(signal?: AbortSignal): Promise<ModuleProgress[]> {
+  return requestJson(
+    '/me/progress',
+    { signal },
+    (value): value is ModuleProgress[] =>
+      Array.isArray(value) &&
+      value.every(
+        (item: unknown) =>
+          isRecord(item) &&
+          typeof item.module_id === 'number' &&
+          typeof item.lesson_count === 'number' &&
+          Array.isArray(item.completed_lesson_ids) &&
+          item.completed_lesson_ids.every(
+            (id: unknown) => typeof id === 'number',
+          ) &&
+          (item.best_quiz_attempt === null ||
+            (isRecord(item.best_quiz_attempt) &&
+              typeof item.best_quiz_attempt.score === 'number' &&
+              typeof item.best_quiz_attempt.max_score === 'number')),
+      ),
+  )
+}
+
+export function completeLesson(
+  lessonId: number,
+  csrfToken: string,
+): Promise<LessonCompletionResponse> {
+  return requestJson(
+    `/lessons/${lessonId}/complete`,
+    {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken },
+    },
+    (value): value is LessonCompletionResponse =>
+      isRecord(value) &&
+      value.lesson_id === lessonId &&
+      typeof value.completed_at === 'number',
+  )
+}
+
 export function listModules(signal?: AbortSignal): Promise<ModuleSummary[]> {
   return requestJson(
     '/modules',
@@ -224,9 +303,8 @@ export function createModule(
   csrfToken: string,
   key: string,
   title: string,
-  description: string,
 ): Promise<ModuleResponse> {
-  const body = { key, title, description }
+  const body = { key, title }
   return requestJson(
     '/admin/modules',
     {
@@ -241,13 +319,150 @@ export function createModule(
   )
 }
 
+export function createLesson(
+  csrfToken: string,
+  moduleId: number,
+  lesson: LessonInput,
+): Promise<LessonResponse> {
+  return requestJson(
+    `/admin/modules/${moduleId}/lessons`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify(lesson),
+    },
+    isLessonResponse,
+  )
+}
+
+export function listModuleLessons(
+  moduleId: number,
+  includeArchived: boolean,
+  signal?: AbortSignal,
+): Promise<LessonResponse[]> {
+  return requestJson(
+    `/admin/modules/${moduleId}/lessons?include_archived=${includeArchived}`,
+    { signal },
+    (value): value is LessonResponse[] =>
+      Array.isArray(value) && value.every(isLessonResponse),
+  )
+}
+
+// Unlike the student endpoint, this includes the key and archived state.
+export function getAdminLesson(
+  lessonId: number,
+  signal?: AbortSignal,
+): Promise<LessonResponse> {
+  return requestJson(`/admin/lessons/${lessonId}`, { signal }, isLessonResponse)
+}
+
+export function updateLesson(
+  csrfToken: string,
+  lessonId: number,
+  changes: LessonPatch,
+): Promise<LessonResponse> {
+  return requestJson(
+    `/admin/lessons/${lessonId}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify(changes),
+    },
+    isLessonResponse,
+  )
+}
+
+export function restoreLesson(
+  csrfToken: string,
+  lessonId: number,
+): Promise<LessonResponse> {
+  return requestJson(
+    `/admin/lessons/${lessonId}/restore`,
+    {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken },
+    },
+    isLessonResponse,
+  )
+}
+
+// Rejects with a 404 ApiError when the module has no quiz.
+export function getAdminQuiz(
+  moduleId: number,
+  includeArchived: boolean,
+  signal?: AbortSignal,
+): Promise<AdminQuiz> {
+  return requestJson(
+    `/admin/modules/${moduleId}/quiz?include_archived=${includeArchived}`,
+    { signal },
+    isAdminQuiz,
+  )
+}
+
+export function createQuiz(
+  csrfToken: string,
+  moduleId: number,
+  quiz: QuizInput,
+): Promise<AdminQuiz> {
+  return requestJson(
+    `/admin/modules/${moduleId}/quiz`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify(quiz),
+    },
+    isAdminQuiz,
+  )
+}
+
+export function replaceQuiz(
+  csrfToken: string,
+  quizId: number,
+  quiz: QuizInput,
+): Promise<AdminQuiz> {
+  return requestJson(
+    `/admin/quizzes/${quizId}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify(quiz),
+    },
+    isAdminQuiz,
+  )
+}
+
+export function restoreQuiz(
+  csrfToken: string,
+  quizId: number,
+): Promise<AdminQuiz> {
+  return requestJson(
+    `/admin/quizzes/${quizId}/restore`,
+    {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken },
+    },
+    isAdminQuiz,
+  )
+}
+
 export function updateModule(
   csrfToken: string,
   moduleId: number,
   title: string,
-  description: string,
 ): Promise<ModuleResponse> {
-  const body = { title, description }
+  const body = { title }
   return requestJson(
     `/admin/modules/${moduleId}`,
     {

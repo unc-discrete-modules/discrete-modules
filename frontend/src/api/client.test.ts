@@ -2,25 +2,40 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SESSION_EXPIRED } from '@/api'
 import {
   ApiError,
+  completeLesson,
+  getMyProgress,
+  createLesson,
   createModule,
+  createQuiz,
   deleteLesson,
   deleteModule,
   deleteQuiz,
+  getAdminLesson,
+  getAdminQuiz,
   getLesson,
   getModule,
   getQuiz,
+  listModuleLessons,
   listModules,
+  restoreLesson,
+  restoreQuiz,
   reorderLessons,
+  replaceQuiz,
   reorderModules,
   submitQuiz,
+  updateLesson,
   updateModule,
 } from './client'
-import type { Quiz, SubmissionRequest, SubmissionResult } from '@/types/types'
+import type {
+  Quiz,
+  QuizInput,
+  SubmissionRequest,
+  SubmissionResult,
+} from '@/types/types'
 
 const moduleSummary = {
   id: 1,
   title: 'Proofs',
-  description: 'Practice',
   display_order: 0,
 }
 const quiz: Quiz = {
@@ -89,6 +104,50 @@ describe('learning API client', () => {
       )
     },
   )
+
+  it('loads progress and saves lesson completion with the CSRF token', async () => {
+    const progress = [
+      {
+        module_id: 1,
+        lesson_count: 2,
+        completed_lesson_ids: [3],
+        best_quiz_attempt: null,
+      },
+    ]
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(progress))
+      .mockResolvedValueOnce(Response.json({ lesson_id: 3, completed_at: 123 }))
+    vi.stubGlobal('fetch', fetch)
+    await expect(getMyProgress()).resolves.toEqual(progress)
+    await expect(completeLesson(3, 'csrf')).resolves.toEqual({
+      lesson_id: 3,
+      completed_at: 123,
+    })
+    expect(fetch).toHaveBeenLastCalledWith(
+      '/api/lessons/3/complete',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'X-CSRF-Token': 'csrf' },
+        credentials: 'same-origin',
+      }),
+    )
+  })
+
+  it('reports errors and rejects invalid progress responses', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json(
+          { error: { code: 'forbidden', message: 'Denied' } },
+          { status: 403 },
+        ),
+      )
+      .mockResolvedValueOnce(Response.json([{ module_id: 1 }]))
+    vi.stubGlobal('fetch', fetch)
+    await expect(completeLesson(3, 'csrf')).rejects.toThrow('Denied')
+    await expect(getMyProgress()).rejects.toThrow('invalid response')
+  })
 
   it('submits all answer types and returns nullable self-check feedback', async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json(result))
@@ -166,14 +225,13 @@ describe('learning API client', () => {
       id: 12,
       key: 'discrete-math',
       title: 'Discrete Math',
-      description: 'Updated introduction.',
       position: 0,
     }
     const fetch = vi.fn().mockResolvedValue(Response.json(updatedModule))
     vi.stubGlobal('fetch', fetch)
-    await expect(
-      updateModule('csrf', 12, 'Discrete Math', 'Updated introduction.'),
-    ).resolves.toEqual(updatedModule)
+    await expect(updateModule('csrf', 12, 'Discrete Math')).resolves.toEqual(
+      updatedModule,
+    )
     expect(fetch).toHaveBeenCalledWith(
       '/api/admin/modules/12',
       expect.objectContaining({
@@ -184,7 +242,6 @@ describe('learning API client', () => {
         },
         body: JSON.stringify({
           title: 'Discrete Math',
-          description: 'Updated introduction.',
         }),
         credentials: 'same-origin',
       }),
@@ -219,23 +276,292 @@ describe('learning API client', () => {
     )
   })
 
+  it('creates a lesson with the authenticated admin endpoint', async () => {
+    const created = {
+      id: 31,
+      module_id: 12,
+      key: 'proofs',
+      title: 'Proofs',
+      body: '## Hi',
+      video_url: null,
+      position: 2,
+      archived: false,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json(created))
+    vi.stubGlobal('fetch', fetch)
+    const lesson = {
+      key: 'proofs',
+      title: 'Proofs',
+      body: '## Hi',
+      video_url: null,
+    }
+
+    await expect(createLesson('csrf', 12, lesson)).resolves.toEqual(created)
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/modules/12/lessons',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': 'csrf',
+        },
+        body: JSON.stringify(lesson),
+        credentials: 'same-origin',
+      }),
+    )
+  })
+
+  it('lists a module’s lessons, including archived ones, for admins', async () => {
+    const row = {
+      id: 31,
+      module_id: 12,
+      key: 'proofs',
+      title: 'Proofs',
+      body: '## Hi',
+      video_url: null,
+      position: 0,
+      archived: true,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json([row]))
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(listModuleLessons(12, true)).resolves.toEqual([row])
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/modules/12/lessons?include_archived=true',
+      expect.objectContaining({ credentials: 'same-origin' }),
+    )
+  })
+
+  it('reads a lesson for editing, with its key and archived state', async () => {
+    const row = {
+      id: 31,
+      module_id: 12,
+      key: 'proofs',
+      title: 'Proofs',
+      body: '## Hi',
+      video_url: 'https://youtu.be/abc',
+      position: 0,
+      archived: false,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json(row))
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(getAdminLesson(31)).resolves.toEqual(row)
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/lessons/31',
+      expect.objectContaining({ credentials: 'same-origin' }),
+    )
+  })
+
+  it('rejects a lesson response that is missing its content', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          Response.json({ id: 31, key: 'proofs', title: 'Proofs' }),
+        ),
+    )
+
+    await expect(getAdminLesson(31)).rejects.toThrow(
+      'The server returned an invalid response',
+    )
+  })
+
+  it('updates a lesson, clearing its video when asked', async () => {
+    const row = {
+      id: 31,
+      module_id: 12,
+      key: 'proofs',
+      title: 'New',
+      body: 'Body',
+      video_url: null,
+      position: 0,
+      archived: true,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json(row))
+    vi.stubGlobal('fetch', fetch)
+    const changes = { title: 'New', body: 'Body', video_url: null }
+
+    await expect(updateLesson('csrf', 31, changes)).resolves.toEqual(row)
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/lessons/31',
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': 'csrf',
+        },
+        body: JSON.stringify(changes),
+      }),
+    )
+  })
+
+  it('restores an archived lesson', async () => {
+    const row = {
+      id: 31,
+      module_id: 12,
+      key: 'proofs',
+      title: 'Proofs',
+      body: 'Body',
+      video_url: null,
+      position: 0,
+      archived: false,
+    }
+    const fetch = vi.fn().mockResolvedValue(Response.json(row))
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(restoreLesson('csrf', 31)).resolves.toEqual(row)
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/lessons/31/restore',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'X-CSRF-Token': 'csrf' },
+      }),
+    )
+  })
+
+  describe('admin quiz', () => {
+    const questions: QuizInput['questions'] = [
+      { key: 'a', type: 'fill_in_blank', prompt: 'A ____', answer: 'x' },
+    ]
+    const row = (archived: boolean) => ({
+      id: 5,
+      module_id: 12,
+      archived,
+      questions: [],
+    })
+
+    it('reads a module quiz, including an archived one', async () => {
+      const fetch = vi.fn().mockResolvedValue(Response.json(row(true)))
+      vi.stubGlobal('fetch', fetch)
+
+      await expect(getAdminQuiz(12, true)).resolves.toEqual(row(true))
+
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/admin/modules/12/quiz?include_archived=true',
+        expect.objectContaining({ credentials: 'same-origin' }),
+      )
+    })
+
+    it('rejects a saved quiz whose questions are missing their fields', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          Response.json({
+            id: 5,
+            module_id: 12,
+            archived: false,
+            questions: [{ id: 1, prompt: 'No key or type' }],
+          }),
+        ),
+      )
+
+      await expect(getAdminQuiz(12, true)).rejects.toThrow(
+        'The server returned an invalid response',
+      )
+    })
+
+    it('rejects with a 404 when the module has no quiz', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValue(
+            Response.json(
+              { error: { code: 'not_found', message: 'Quiz not found' } },
+              { status: 404 },
+            ),
+          ),
+      )
+
+      await expect(getAdminQuiz(12, true)).rejects.toMatchObject({
+        status: 404,
+      })
+    })
+
+    it.each([
+      [
+        'creates',
+        () => createQuiz('csrf', 12, { questions }),
+        'POST',
+        '/api/admin/modules/12/quiz',
+        true,
+      ],
+      [
+        'replaces',
+        () => replaceQuiz('csrf', 5, { questions }),
+        'PUT',
+        '/api/admin/quizzes/5',
+        true,
+      ],
+      [
+        'restores',
+        () => restoreQuiz('csrf', 5),
+        'POST',
+        '/api/admin/quizzes/5/restore',
+        false,
+      ],
+    ])(
+      '%s a quiz with the authenticated admin endpoint',
+      async (_name, call, method, path, hasBody) => {
+        const fetch = vi.fn().mockResolvedValue(Response.json(row(false)))
+        vi.stubGlobal('fetch', fetch)
+
+        await expect(call()).resolves.toEqual(row(false))
+
+        expect(fetch).toHaveBeenCalledWith(
+          path,
+          expect.objectContaining({
+            method,
+            headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf' }),
+            ...(hasBody ? { body: JSON.stringify({ questions }) } : {}),
+          }),
+        )
+      },
+    )
+  })
+
+  it('reports why a lesson could not be created', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json(
+          {
+            error: {
+              code: 'conflict',
+              message: 'Module is archived; restore it first',
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+    )
+
+    await expect(
+      createLesson('csrf', 12, { key: 'a', title: 'A', body: 'b' }),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: 'Module is archived; restore it first',
+    })
+  })
+
   it('creates a module with the authenticated admin endpoint', async () => {
     const createdModule = {
       id: 12,
       key: 'discrete-math',
       title: 'Discrete Math',
-      description: 'An introduction to discrete mathematics.',
       position: 0,
     }
     const fetch = vi.fn().mockResolvedValue(Response.json(createdModule))
     vi.stubGlobal('fetch', fetch)
     await expect(
-      createModule(
-        'csrf',
-        'discrete-math',
-        'Discrete Math',
-        'An introduction to discrete mathematics.',
-      ),
+      createModule('csrf', 'discrete-math', 'Discrete Math'),
     ).resolves.toEqual(createdModule)
     expect(fetch).toHaveBeenCalledWith(
       '/api/admin/modules',
@@ -248,7 +574,6 @@ describe('learning API client', () => {
         body: JSON.stringify({
           key: 'discrete-math',
           title: 'Discrete Math',
-          description: 'An introduction to discrete mathematics.',
         }),
         credentials: 'same-origin',
       }),

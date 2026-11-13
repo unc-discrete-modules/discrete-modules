@@ -1,5 +1,11 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AuthContext } from '@/context/auth-context-value'
@@ -107,7 +113,6 @@ describe('module lesson reorder', () => {
           Response.json({
             id: 12,
             title: 'Discrete Math',
-            description: 'Practice',
             display_order: 0,
             quiz_id: 3,
             lessons: [],
@@ -120,7 +125,6 @@ describe('module lesson reorder', () => {
             id: 12,
             key: 'discrete-math',
             title: 'Combinatorics',
-            description: 'Practice',
             position: 0,
           }),
         )
@@ -131,7 +135,9 @@ describe('module lesson reorder', () => {
 
     render(renderModuleEdit())
 
-    const nameInput = await screen.findByRole('textbox', { name: 'Module Name' })
+    const nameInput = await screen.findByRole('textbox', {
+      name: 'Module Name',
+    })
     expect(nameInput).toHaveValue('Discrete Math')
     fireEvent.change(nameInput, { target: { value: 'Combinatorics' } })
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
@@ -143,7 +149,6 @@ describe('module lesson reorder', () => {
           method: 'PATCH',
           body: JSON.stringify({
             title: 'Combinatorics',
-            description: 'Practice',
           }),
         }),
       )
@@ -158,7 +163,6 @@ describe('module lesson reorder', () => {
           Response.json({
             id: 12,
             title: 'Discrete Math',
-            description: 'Practice',
             display_order: 0,
             quiz_id: 3,
             lessons: [
@@ -186,9 +190,10 @@ describe('module lesson reorder', () => {
       screen.getAllByRole('button', { name: 'Move first lesson down' })[0],
     )
     expect(
-      screen.getByText('Second lesson').compareDocumentPosition(
-        screen.getByText('First lesson'),
-      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      screen
+        .getByText('Second lesson')
+        .compareDocumentPosition(screen.getByText('First lesson')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(
       screen.getByRole('button', { name: 'Reorder lesson First lesson' }),
@@ -217,5 +222,65 @@ describe('module lesson reorder', () => {
     expect(
       screen.queryByRole('button', { name: 'Reorder quiz Quiz 1' }),
     ).not.toBeInTheDocument()
+  })
+})
+
+describe('save errors', () => {
+  const failingApi = (failingPath: string) =>
+    vi.fn((input: RequestInfo | URL) => {
+      if (String(input) === '/api/modules/12') {
+        return Promise.resolve(
+          Response.json({
+            id: 12,
+            title: 'Discrete Math',
+            display_order: 0,
+            quiz_id: null,
+            lessons: [
+              { id: 1, title: 'First lesson' },
+              { id: 2, title: 'Second lesson' },
+            ],
+          }),
+        )
+      }
+      if (String(input) === failingPath) {
+        return Promise.resolve(Response.json({}, { status: 500 }))
+      }
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+  it('shows a failed module name save only beside the name', async () => {
+    vi.stubGlobal('fetch', failingApi('/api/admin/modules/12'))
+    render(renderModuleEdit())
+    const nameInput = await screen.findByRole('textbox', {
+      name: 'Module Name',
+    })
+
+    fireEvent.change(nameInput, { target: { value: 'Combinatorics' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Unable to save module name.')
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(
+      alert.compareDocumentPosition(screen.getByText('Lessons')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('shows a failed lesson order save only in the lessons area', async () => {
+    vi.stubGlobal('fetch', failingApi('/api/admin/modules/12/lessons/order'))
+    render(renderModuleEdit())
+    await screen.findByText('First lesson')
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Reorder' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[1])
+
+    const alert = await screen.findByRole('alert')
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(alert).not.toHaveTextContent('module name')
+    expect(
+      screen.getByText('Lessons').compareDocumentPosition(alert) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 })

@@ -31,7 +31,6 @@ const quiz = {
 const module = {
   id: 9,
   title: 'Proofs',
-  description: '',
   display_order: 9,
   quiz_id: 4,
   lessons: [
@@ -185,9 +184,11 @@ describe('Quiz page', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
 
-    expect(
-      await screen.findByRole('heading', { name: 'Quiz results' }),
-    ).toHaveFocus()
+    const heading = await screen.findByRole('heading', {
+      name: 'Quiz results',
+    })
+    // Focus moves in an effect just after the heading appears.
+    await waitFor(() => expect(heading).toHaveFocus())
     expect(screen.getByText(/Score: 1 of 2/)).toBeInTheDocument()
     expect(screen.queryByTestId('location')).not.toBeInTheDocument()
     const [path, init] = postCalls(fetch)[0]

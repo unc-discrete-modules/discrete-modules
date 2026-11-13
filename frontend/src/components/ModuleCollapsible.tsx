@@ -12,6 +12,7 @@ import {
   SidebarMenuSubItem,
 } from '@/components/ui/sidebar'
 import { useModule } from '@/hooks/use-modules'
+import { useProgress } from '@/context/progress-context-value'
 import type { ModuleSummary } from '@/types/types'
 
 type ModuleCollapsibleProps = {
@@ -26,6 +27,11 @@ export default function ModuleCollapsible({
   onOpenChange,
 }: ModuleCollapsibleProps) {
   const { moduleId, lessonId, quizId } = useParams()
+  const progressState = useProgress()
+  const progress = progressState?.progress?.find(
+    (item) => item.module_id === module.id,
+  )
+  const completed = new Set(progress?.completed_lesson_ids ?? [])
   const isCurrentModule = Number(moduleId) === module.id
   const {
     module: details,
@@ -51,6 +57,20 @@ export default function ModuleCollapsible({
           <span className="min-w-0 flex-1 truncate">
             {module.display_order + 1}. {module.title}
           </span>
+          {progress && (
+            <span
+              className="shrink-0 text-xs"
+              aria-label={
+                progress.lesson_count === 0
+                  ? undefined
+                  : `${progress.completed_lesson_ids.length} of ${progress.lesson_count} lessons complete`
+              }
+            >
+              {progress.lesson_count === 0
+                ? 'No lessons'
+                : `${progress.completed_lesson_ids.length}/${progress.lesson_count}`}
+            </span>
+          )}
           <ChevronRight className="ml-auto shrink-0 transition-transform duration-150 group-data-open/collapsible:rotate-90 stroke-muted-navy" />
         </SidebarMenuButton>
 
@@ -78,6 +98,9 @@ export default function ModuleCollapsible({
                   <span className="min-w-0 flex-1 truncate">
                     {index + 1}. {lesson.title}
                   </span>
+                  {progress && !completed.has(lesson.id) && (
+                    <span className="shrink-0 text-xs">To do</span>
+                  )}
                 </SidebarMenuSubButton>
               </SidebarMenuSubItem>
             ))}
@@ -95,9 +118,7 @@ export default function ModuleCollapsible({
                   isActive={details.quiz_id === Number(quizId)}
                   className="h-7 w-full items-center overflow-hidden rounded-none whitespace-nowrap pl-8"
                 >
-                  <span className="min-w-0 flex-1 truncate">
-                    Quiz 1
-                  </span>
+                  <span className="min-w-0 flex-1 truncate">Quiz 1</span>
                 </SidebarMenuSubButton>
               </SidebarMenuSubItem>
             )}

@@ -16,7 +16,6 @@ vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }))
 const moduleSummary: ModuleSummary = {
   id: 8,
   title: 'Sets',
-  description: 'An introduction to sets.',
   display_order: 0,
 }
 

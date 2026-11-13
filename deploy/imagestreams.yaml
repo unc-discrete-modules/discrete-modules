@@ -1,0 +1,25 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: discrete-modules-frontend
+spec:
+  tags:
+    - name: latest
+      from:
+        kind: DockerImage
+        name: ghcr.io/unc-discrete-modules/discrete-modules-frontend:latest
+      importPolicy:
+        scheduled: true
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: discrete-modules-backend
+spec:
+  tags:
+    - name: latest
+      from:
+        kind: DockerImage
+        name: ghcr.io/unc-discrete-modules/discrete-modules-backend:latest
+      importPolicy:
+        scheduled: true

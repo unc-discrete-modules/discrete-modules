@@ -43,11 +43,15 @@ def create_app() -> FastAPI:
     app.include_router(root.router)
     app.include_router(auth.router)
     # Lesson images are stored as /api/content/... URLs; /api is the prefix the
-    # frontend proxy already forwards to this service.
+    # frontend proxy already forwards to this service. A missing directory would
+    # silently turn every image into a 404, so production refuses to start; local
+    # development without content/ stays usable.
     if settings.content_dir.is_dir():
         app.mount(
             "/api/content", StaticFiles(directory=settings.content_dir), name="content"
         )
+    elif settings.environment == "production":
+        raise RuntimeError(f"CONTENT_DIR does not exist: {settings.content_dir}")
     return app
 
 

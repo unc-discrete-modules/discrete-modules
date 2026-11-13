@@ -33,7 +33,6 @@ class Module(ModelBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     key: str = Field(max_length=100, unique=True)
     title: str = Field(max_length=200)
-    description: str = Field(sa_type=Text)
     position: int = Field(unique=True)
     archived: bool = Field(
         default=False,
@@ -83,6 +82,9 @@ class Lesson(ModelBase, table=True):
         default=False,
         sa_column_kwargs={"server_default": false()},
     )
+    # Fingerprint of the content the seed last wrote. A row whose current content
+    # no longer matches it was edited in the database and is never overwritten.
+    seed_hash: str | None = Field(default=None, max_length=64)
 
     module: Module = Relationship(back_populates="lessons")
 

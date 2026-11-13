@@ -1,8 +1,23 @@
-/** Button that opens the module creation popover. */
+/** Create buttons: an outlined green one that opens the module creation popover, and a filled blue one for submitting forms. */
 
 import type { ComponentProps } from 'react'
 import { Button } from '../ui/button'
 import { Plus } from 'lucide-react'
+
+export function CreateFillButton({
+  children,
+  ...props
+}: ComponentProps<typeof Button>) {
+  return (
+    <Button
+      className="rounded-md bg-primary hover:bg-primary cursor-pointer font-bold drop-shadow-sm drop-shadow-muted-navy/25 transition ease-in-out hover:saturate-130 hover:scale-102 disabled:opacity-100 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:saturate-100"
+      {...props}
+    >
+      Create
+      {children}
+    </Button>
+  )
+}
 
 export default function CreateButton({
   children,

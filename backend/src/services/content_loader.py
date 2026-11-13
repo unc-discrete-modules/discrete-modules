@@ -24,7 +24,7 @@ MAX_KEY_LENGTH = 100
 MAX_TITLE_LENGTH = 200
 MAX_URL_LENGTH = 2048
 
-MODULE_FIELDS = {"title", "description"}
+MODULE_FIELDS = {"title"}
 LESSON_FIELDS = {"title", "video_url"}
 QUESTION_FIELDS = {"key", "type", "prompt", "options", "answer"}
 OPTION_FIELDS = {"text", "correct"}
@@ -69,7 +69,6 @@ class LessonRecord:
 class ModuleRecord:
     key: str
     title: str
-    description: str
     position: int
     lessons: tuple[LessonRecord, ...]
     questions: tuple[QuestionRecord, ...] | None  # None: the module has no quiz
@@ -100,12 +99,11 @@ def _load_module(folder: Path, problems: list[str]) -> ModuleRecord | None:
     start = len(problems)
     ordered = _ordered_name(folder.name, folder.name, problems)
     meta = _read_yaml_file(folder / "module.yaml", folder.name, problems)
-    title = description = None
+    title = None
     if meta is not None:
         where = f"{folder.name}/module.yaml"
         _reject_unknown(meta, MODULE_FIELDS, where, problems)
         title = _text(meta, "title", where, problems, MAX_TITLE_LENGTH)
-        description = _text(meta, "description", where, problems)
 
     lessons = [
         lesson
@@ -126,7 +124,6 @@ def _load_module(folder: Path, problems: list[str]) -> ModuleRecord | None:
     return ModuleRecord(
         key=key,
         title=title,
-        description=description,
         position=position,
         lessons=tuple(sorted(lessons, key=lambda lesson: lesson.position)),
         questions=questions,

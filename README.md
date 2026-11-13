@@ -3,6 +3,8 @@
 Discrete Modules is a browser-based learning application for discrete mathematics.
 The local stack consists of a React/Vite client, a FastAPI API, and PostgreSQL.
 
+**[Click here to access the document homepage](./docs/HOME.md)**
+
 ## Local development
 
 Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or
@@ -41,7 +43,7 @@ docker compose exec backend uv run alembic upgrade head
 ```
 
 `docker compose up` runs the migrations and loads `content/` through the `seed`
-service. New modules can be loaded with `docker compose run --rm seed`; existing modules are managed in the database.
+service. New modules and changes to unedited lessons can be loaded with `docker compose run --rm seed`; other changes to existing modules are made through the admin API.
 
 If you previously ran the local stack with PostgreSQL 17, reset the local
 database volume before starting PostgreSQL 16:

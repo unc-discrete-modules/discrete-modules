@@ -237,6 +237,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get aggregate student progress
+         * @description Per visible module: how much of its lessons students have completed, how many attempted its quiz, and the questions they miss most. Counts students only and never identifies an individual.
+         */
+        get: operations["admin_get_progress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/modules": {
         parameters: {
             query?: never;
@@ -288,6 +308,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/modules/{module_id}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the signed-in user's progress in a module */
+        get: operations["get_module_progress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/lessons/{lesson_id}": {
         parameters: {
             query?: never;
@@ -299,6 +336,26 @@ export interface paths {
         get: operations["get_lesson"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lessons/{lesson_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark a lesson complete for the signed-in user
+         * @description Repeating the call is safe and keeps the first completion time.
+         */
+        post: operations["complete_lesson"];
         delete?: never;
         options?: never;
         head?: never;
@@ -319,6 +376,26 @@ export interface paths {
          * @description Grades the answers and records the attempt for the signed-in user.
          */
         post: operations["submit_quiz"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the signed-in user's progress in every module
+         * @description Lists each visible module in display order, with completed lessons and the best quiz attempt.
+         */
+        get: operations["get_my_progress"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -431,12 +508,35 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdminProgressOverview */
+        AdminProgressOverview: {
+            /**
+             * Student Count
+             * @description Students who have signed in.
+             */
+            student_count: number;
+            /**
+             * Modules
+             * @description Visible modules in display order.
+             */
+            modules: components["schemas"]["ModuleOverview"][];
+        };
         /** AnswerOption */
         AnswerOption: {
             /** Id */
             id: number;
             /** Text */
             text: string;
+        };
+        /** BestAttempt */
+        BestAttempt: {
+            /** Score */
+            score: number;
+            /**
+             * Max Score
+             * @description Auto-graded questions in that attempt.
+             */
+            max_score: number;
         };
         /** CurrentUserResponse */
         CurrentUserResponse: {
@@ -564,6 +664,16 @@ export interface components {
              */
             next_lesson_id?: number | null;
         };
+        /** LessonCompletionResponse */
+        LessonCompletionResponse: {
+            /** Lesson Id */
+            lesson_id: number;
+            /**
+             * Completed At
+             * @description Unix time of the first completion.
+             */
+            completed_at: number;
+        };
         /** LessonInput */
         LessonInput: {
             /** Key */
@@ -612,14 +722,31 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** MissedQuestion */
+        MissedQuestion: {
+            /** Question Id */
+            question_id: number;
+            /** Prompt */
+            prompt: string;
+            /**
+             * Answered
+             * @description Graded responses from students, retakes included.
+             */
+            answered: number;
+            /** Incorrect */
+            incorrect: number;
+            /**
+             * Miss Rate
+             * @description incorrect / answered, from 0 to 1.
+             */
+            miss_rate: number;
+        };
         /** Module */
         Module: {
             /** Id */
             id: number;
             /** Title */
             title: string;
-            /** Description */
-            description: string;
             /**
              * Display Order
              * @description Position in the module list, from 0.
@@ -642,15 +769,57 @@ export interface components {
             key: string;
             /** Title */
             title: string;
-            /** Description */
-            description: string;
+        };
+        /** ModuleOverview */
+        ModuleOverview: {
+            /** Module Id */
+            module_id: number;
+            /** Title */
+            title: string;
+            /**
+             * Lesson Count
+             * @description Lessons currently visible to students.
+             */
+            lesson_count: number;
+            /**
+             * Students Started
+             * @description Students who completed at least one lesson in the module.
+             */
+            students_started: number;
+            /**
+             * Average Completion
+             * @description Average share of the module's lessons completed across all students, counting students who have not started as 0. Null when there are no students or no lessons.
+             */
+            average_completion: number | null;
+            /** Students Attempted Quiz */
+            students_attempted_quiz: number;
+            /**
+             * Most Missed Questions
+             * @description Auto-graded questions students miss most, worst first.
+             */
+            most_missed_questions: components["schemas"]["MissedQuestion"][];
         };
         /** ModulePatch */
         ModulePatch: {
             /** Title */
             title?: string | null;
-            /** Description */
-            description?: string | null;
+        };
+        /** ModuleProgress */
+        ModuleProgress: {
+            /** Module Id */
+            module_id: number;
+            /**
+             * Lesson Count
+             * @description Lessons currently visible to students.
+             */
+            lesson_count: number;
+            /**
+             * Completed Lesson Ids
+             * @description Visible lessons the user completed, in lesson order.
+             */
+            completed_lesson_ids: number[];
+            /** @description Null until the user submits the module's quiz. */
+            best_quiz_attempt: components["schemas"]["BestAttempt"] | null;
         };
         /** ModuleResponse */
         ModuleResponse: {
@@ -660,8 +829,6 @@ export interface components {
             key: string;
             /** Title */
             title: string;
-            /** Description */
-            description: string;
             /** Position */
             position: number;
             /** Archived */
@@ -673,8 +840,6 @@ export interface components {
             id: number;
             /** Title */
             title: string;
-            /** Description */
-            description: string;
             /**
              * Display Order
              * @description Position in the module list, from 0.
@@ -2296,6 +2461,65 @@ export interface operations {
             };
         };
     };
+    admin_get_progress: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for write requests. Get the token from GET /api/auth/me. */
+                "X-CSRF-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProgressOverview"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Admin access or CSRF validation failed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Database unreachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     list_modules: {
         parameters: {
             query?: never;
@@ -2441,6 +2665,58 @@ export interface operations {
             };
         };
     };
+    get_module_progress: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for write requests. Get the token from GET /api/auth/me. */
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                module_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModuleProgress"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     get_lesson: {
         parameters: {
             query?: never;
@@ -2462,6 +2738,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Lesson"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    complete_lesson: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for write requests. Get the token from GET /api/auth/me. */
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                lesson_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LessonCompletionResponse"];
                 };
             };
             /** @description Authentication required */
@@ -2545,6 +2873,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_my_progress: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for write requests. Get the token from GET /api/auth/me. */
+                "X-CSRF-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModuleProgress"][];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
