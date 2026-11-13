@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom/vitest'
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -36,6 +37,25 @@ function choose(file: File) {
   fireEvent.change(screen.getByLabelText('Lesson file'), {
     target: { files: [file] },
   })
+}
+
+// A file whose read the test finishes by hand, to put reads in any order.
+function slowFile(name: string) {
+  const file = new File(['unused'], name)
+  let finish: (text: string) => void = () => {}
+  let fail: () => void = () => {}
+  Object.defineProperty(file, 'text', {
+    value: () =>
+      new Promise<string>((resolve, reject) => {
+        finish = resolve
+        fail = () => reject(new Error('read failed'))
+      }),
+  })
+  return {
+    file,
+    finish: (text: string) => act(async () => finish(text)),
+    fail: () => act(async () => fail()),
+  }
 }
 
 describe('FileUploadForm', () => {
@@ -202,5 +222,114 @@ describe('FileUploadForm', () => {
       'href',
       '/edit-module/3',
     )
+  })
+
+  describe('when reads finish out of order', () => {
+    it('shows only the current file when an earlier slow read finishes late', async () => {
+      renderForm(vi.fn())
+      const first = slowFile('first.md')
+      const second = slowFile('second.md')
+      choose(first.file)
+      choose(second.file)
+
+      await second.finish('# Two')
+      expect(await screen.findByText('Previewing second.md')).toBeVisible()
+      await first.finish('# One')
+
+      expect(screen.getByText('Previewing second.md')).toBeVisible()
+      expect(screen.queryByText('Previewing first.md')).not.toBeInTheDocument()
+    })
+
+    it('shows only the current file when the reads finish in order', async () => {
+      renderForm(vi.fn())
+      const first = slowFile('first.md')
+      const second = slowFile('second.md')
+      choose(first.file)
+      choose(second.file)
+
+      await first.finish('# One')
+      expect(screen.queryByText('Previewing first.md')).not.toBeInTheDocument()
+      await second.finish('# Two')
+
+      expect(await screen.findByText('Previewing second.md')).toBeVisible()
+      expect(screen.queryByText('Previewing first.md')).not.toBeInTheDocument()
+    })
+
+    it('hands Create the current file, not the one whose read finished last', async () => {
+      const onCreate = vi.fn().mockResolvedValue(undefined)
+      renderForm(onCreate)
+      const first = slowFile('first.md')
+      const second = slowFile('second.md')
+      choose(first.file)
+      choose(second.file)
+      await second.finish('# Two')
+      await screen.findByText('Previewing second.md')
+      await first.finish('# One')
+
+      fireEvent.click(screen.getByRole('button', { name: /create/i }))
+
+      await waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1))
+      expect(onCreate).toHaveBeenCalledWith({
+        name: 'second.md',
+        text: '# Two',
+      })
+    })
+
+    it('ignores an earlier read that fails after another file was chosen', async () => {
+      renderForm(vi.fn())
+      const first = slowFile('first.md')
+      const second = slowFile('second.md')
+      choose(first.file)
+      choose(second.file)
+      await second.finish('# Two')
+      await screen.findByText('Previewing second.md')
+
+      await first.fail()
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.getByText('Previewing second.md')).toBeVisible()
+    })
+
+    it('still reports a failed read of the file that is current', async () => {
+      renderForm(vi.fn())
+      const only = slowFile('only.md')
+      choose(only.file)
+
+      await only.fail()
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Could not read that file.',
+      )
+      expect(screen.queryByText('Previewing only.md')).not.toBeInTheDocument()
+    })
+
+    it('shows nothing when the file was removed before its read finished', async () => {
+      renderForm(vi.fn())
+      const slow = slowFile('slow.md')
+      choose(slow.file)
+      fireEvent.change(screen.getByLabelText('Lesson file'), {
+        target: { files: [] },
+      })
+
+      await slow.finish('# Late')
+
+      expect(screen.queryByText('Previewing slow.md')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /create/i })).toBeDisabled()
+    })
+
+    it('ignores a late read that would replace a rejected file with a preview', async () => {
+      renderForm(vi.fn())
+      const slow = slowFile('slow.md')
+      choose(slow.file)
+      choose(new File(['questions: []'], 'quiz.yaml'))
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Choose a .md file.',
+      )
+
+      await slow.finish('# Late')
+
+      expect(screen.queryByText('Previewing slow.md')).not.toBeInTheDocument()
+      expect(screen.getByRole('alert')).toHaveTextContent('Choose a .md file.')
+    })
   })
 })
