@@ -224,6 +224,7 @@ describe('QuizBuilder', () => {
     expect(onSaved).not.toHaveBeenCalled()
     finish()
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(create).toBeEnabled())
   })
 
   it('shows why saving failed and keeps the quiz so it can be retried', async () => {
@@ -309,5 +310,6 @@ describe('QuizBuilder', () => {
       screen.getAllByText(/^(Which\?|Second)$/).map((n) => n.textContent),
     ).toEqual(['Which?', 'Second'])
     finish()
+    await waitFor(() => expect(create).toBeEnabled())
   })
 })
