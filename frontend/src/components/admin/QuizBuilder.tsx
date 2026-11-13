@@ -75,6 +75,7 @@ export default function QuizBuilder({
         questions={questions}
         onChange={setQuestions}
         showProblems={attempted}
+        disabled={submitting}
       />
 
       {error && (

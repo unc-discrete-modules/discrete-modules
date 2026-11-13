@@ -224,6 +224,7 @@ describe('QuizBuilder', () => {
     expect(onSaved).not.toHaveBeenCalled()
     finish()
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(create).toBeEnabled())
   })
 
   it('shows why saving failed and keeps the quiz so it can be retried', async () => {
@@ -257,5 +258,58 @@ describe('QuizBuilder', () => {
       'href',
       '/edit-module/3',
     )
+  })
+
+  it('locks the questions while saving, and unlocks them if saving fails', async () => {
+    let fail: (reason: Error) => void = () => {}
+    const onSave = vi.fn(
+      () => new Promise<void>((_resolve, reject) => (fail = reject)),
+    )
+    renderBuilder(onSave)
+    fillChoice(1, 'Keep this')
+    const create = screen.getByRole('button', { name: /create/i })
+
+    fireEvent.click(create)
+    await waitFor(() => expect(create).toBeDisabled())
+
+    expect(question(1).getByLabelText('Question text')).toBeDisabled()
+    expect(question(1).getByLabelText('Option 1 text')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Free response' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Reorder' })).toBeDisabled()
+    fail(new Error('Could not save'))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save')
+    expect(question(1).getByLabelText('Question text')).toBeEnabled()
+    expect(question(1).getByLabelText('Question text')).toHaveValue('Keep this')
+  })
+
+  it('ignores a question dropped while saving', async () => {
+    let finish: () => void = () => {}
+    const onSave = vi.fn(
+      () => new Promise<void>((resolve) => (finish = resolve)),
+    )
+    renderBuilder(onSave)
+    fillChoice(1)
+    addQuestion('Free response')
+    fireEvent.change(question(2).getByLabelText('Question text'), {
+      target: { value: 'Second' },
+    })
+    fireEvent.change(question(2).getByLabelText('Model answer'), {
+      target: { value: 'Answer' },
+    })
+    const secondId = screen
+      .getByRole('group', { name: /^Question 2:/ })
+      .id.replace('question-', '')
+    fireEvent.click(screen.getByRole('button', { name: 'Reorder' }))
+    const create = screen.getByRole('button', { name: /create/i })
+
+    fireEvent.click(create)
+    await waitFor(() => expect(create).toBeDisabled())
+    drag(secondId, 0)
+
+    expect(
+      screen.getAllByText(/^(Which\?|Second)$/).map((n) => n.textContent),
+    ).toEqual(['Which?', 'Second'])
+    finish()
+    await waitFor(() => expect(create).toBeEnabled())
   })
 })

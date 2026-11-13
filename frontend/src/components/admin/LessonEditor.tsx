@@ -116,7 +116,7 @@ export default function LessonEditor({
       // The server tidies the Markdown, so show what it stored.
       const stored = fieldsOf(updated)
       setSaved(stored)
-      setFields(stored)
+      setFields((current) => (current === fields ? stored : current))
       setAttempted(false)
       setNotice('Saved.')
     } catch (reason) {
@@ -166,7 +166,10 @@ export default function LessonEditor({
         className="max-w-4xl space-y-5"
       >
         {view === 'edit' ? (
-          <>
+          // Locked while saving: the fields are replaced with what the server
+          // stored, which would discard anything typed meanwhile. The preview
+          // has no fields, so it is left out of the lock.
+          <fieldset disabled={saving} className="min-w-0 space-y-5">
             <div className="space-y-1">
               <Label
                 htmlFor={`${baseId}-title`}
@@ -237,7 +240,7 @@ export default function LessonEditor({
               />
               <Problem id={`${baseId}-body-problem`}>{problems?.body}</Problem>
             </div>
-          </>
+          </fieldset>
         ) : (
           <section aria-labelledby={`${baseId}-preview`} className="space-y-2">
             <h2

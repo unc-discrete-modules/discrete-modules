@@ -9,6 +9,7 @@ type QuestionReorderRowProps = {
   index: number
   type: QuestionType
   prompt: string
+  disabled?: boolean
 }
 
 // The first line is enough to tell questions apart.
@@ -22,8 +23,9 @@ export default function QuestionReorderRow({
   index,
   type,
   prompt,
+  disabled = false,
 }: QuestionReorderRowProps) {
-  const { ref, handleRef, isDragging } = useSortable({ id, index })
+  const { ref, handleRef, isDragging } = useSortable({ id, index, disabled })
   const number = index + 1
 
   return (

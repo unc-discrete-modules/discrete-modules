@@ -376,4 +376,92 @@ describe('LessonEditor', () => {
     type('Title', lesson.title)
     expect(closing()).toBe(false)
   })
+
+  it('locks the fields while saving, so edits made meanwhile are not replaced', async () => {
+    let finish: () => void = () => {}
+    const fetchMock = vi.fn<typeof fetch>(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = () => resolve(Response.json({ ...lesson, title: 'One' }))
+        }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    renderEditor()
+    type('Title', 'One')
+
+    fireEvent.click(save())
+    await waitFor(() => expect(save()).toBeDisabled())
+
+    for (const label of [
+      'Title',
+      'Video link (optional)',
+      'Lesson (Markdown)',
+    ]) {
+      expect(field(label)).toBeDisabled()
+    }
+    finish()
+    await screen.findByRole('status')
+    expect(field('Title')).toBeEnabled()
+    expect(field('Title')).toHaveValue('One')
+  })
+
+  it('unlocks the fields when saving fails, with the edits kept', async () => {
+    stubSave(() =>
+      Response.json(
+        { error: { code: 'not_found', message: 'Lesson 31 not found' } },
+        { status: 404 },
+      ),
+    )
+    renderEditor()
+    type('Title', 'Keep me')
+
+    fireEvent.click(save())
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(field('Title')).toBeEnabled()
+    expect(field('Title')).toHaveValue('Keep me')
+  })
+
+  it('does not lock the preview while saving, since it has no fields', async () => {
+    let finish: () => void = () => {}
+    const fetchMock = vi.fn<typeof fetch>(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = () => resolve(Response.json({ ...lesson, title: 'One' }))
+        }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    renderEditor()
+    type('Title', 'One')
+    fireEvent.click(view('Preview'))
+
+    fireEvent.click(save())
+    await waitFor(() => expect(save()).toBeDisabled())
+
+    const preview = screen.getByRole('region', { name: 'Preview' })
+    expect(preview.closest('fieldset')).toBeNull()
+    expect(preview.querySelector(':disabled')).toBeNull()
+    finish()
+    await screen.findByRole('status')
+  })
+
+  it('still locks the fields in the edit view while saving', async () => {
+    let finish: () => void = () => {}
+    const fetchMock = vi.fn<typeof fetch>(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = () => resolve(Response.json({ ...lesson, title: 'One' }))
+        }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    renderEditor()
+    type('Title', 'One')
+
+    fireEvent.click(save())
+    await waitFor(() => expect(save()).toBeDisabled())
+
+    expect(field('Title').closest('fieldset')).toBeDisabled()
+    finish()
+    await screen.findByRole('status')
+  })
 })

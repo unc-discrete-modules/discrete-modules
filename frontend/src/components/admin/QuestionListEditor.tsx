@@ -19,6 +19,11 @@ type QuestionListEditorProps = {
   onChange: (questions: DraftQuestion[]) => void
   // Whether to point out questions that are incomplete.
   showProblems: boolean
+  // Locks everything while the questions are being saved, because the saved
+  // result replaces them and would discard changes made meanwhile. A drag that
+  // was already under way is ignored too: dragging does not go through the
+  // form controls that are disabled.
+  disabled?: boolean
 }
 
 const QUESTION_TYPES = Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]
@@ -27,6 +32,7 @@ export default function QuestionListEditor({
   questions,
   onChange,
   showProblems,
+  disabled = false,
 }: QuestionListEditorProps) {
   // While reordering, questions are shown as short rows that are easy to drag
   // instead of as full editors, as lessons are in the module editor.
@@ -51,7 +57,7 @@ export default function QuestionListEditor({
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    if (event.canceled) return
+    if (disabled || event.canceled) return
     const source = event.operation.source
     if (
       typeof source?.id !== 'string' ||
@@ -81,7 +87,7 @@ export default function QuestionListEditor({
   }
 
   return (
-    <div className="space-y-5">
+    <fieldset disabled={disabled} className="min-w-0 space-y-5">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-muted-navy">Questions</h2>
         <ReorderButton
@@ -106,6 +112,7 @@ export default function QuestionListEditor({
                   index={index}
                   type={question.type}
                   prompt={question.prompt}
+                  disabled={disabled}
                 />
               ))}
             </div>
@@ -154,6 +161,6 @@ export default function QuestionListEditor({
           </div>
         </>
       )}
-    </div>
+    </fieldset>
   )
 }

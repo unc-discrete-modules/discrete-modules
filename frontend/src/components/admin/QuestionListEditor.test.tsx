@@ -195,4 +195,55 @@ describe('QuestionListEditor reordering', () => {
 
     expect(screen.queryByRole('button', { name: /Move question/ })).toBeNull()
   })
+
+  it('ignores a drop that arrives after the list was locked', () => {
+    const onChange = vi.fn()
+    const props = {
+      questions: [first, second, third],
+      showProblems: false,
+      onChange,
+    }
+    const { rerender } = render(<QuestionListEditor {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Reorder' }))
+
+    // A drag was under way when saving started and the list was locked.
+    rerender(<QuestionListEditor {...props} disabled />)
+    drag('third', 0)
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('accepts drops again once it is unlocked', () => {
+    const onChange = vi.fn()
+    const props = {
+      questions: [first, second, third],
+      showProblems: false,
+      onChange,
+    }
+    const { rerender } = render(<QuestionListEditor {...props} disabled />)
+
+    rerender(<QuestionListEditor {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Reorder' }))
+    drag('third', 0)
+
+    expect(ids(onChange)).toEqual(['third', 'first', 'second'])
+  })
+
+  it('locks the editors and the reorder controls while disabled', () => {
+    render(
+      <QuestionListEditor
+        questions={[first, second]}
+        showProblems={false}
+        onChange={vi.fn()}
+        disabled
+      />,
+    )
+
+    expect(screen.getAllByLabelText('Question text')[0]).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Reorder' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Free response' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Remove question 1' }),
+    ).toBeDisabled()
+  })
 })
