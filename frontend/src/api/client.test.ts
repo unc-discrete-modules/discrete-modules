@@ -36,7 +36,6 @@ import type {
 const moduleSummary = {
   id: 1,
   title: 'Proofs',
-  description: 'Practice',
   display_order: 0,
 }
 const quiz: Quiz = {
@@ -226,14 +225,13 @@ describe('learning API client', () => {
       id: 12,
       key: 'discrete-math',
       title: 'Discrete Math',
-      description: 'Updated introduction.',
       position: 0,
     }
     const fetch = vi.fn().mockResolvedValue(Response.json(updatedModule))
     vi.stubGlobal('fetch', fetch)
-    await expect(
-      updateModule('csrf', 12, 'Discrete Math', 'Updated introduction.'),
-    ).resolves.toEqual(updatedModule)
+    await expect(updateModule('csrf', 12, 'Discrete Math')).resolves.toEqual(
+      updatedModule,
+    )
     expect(fetch).toHaveBeenCalledWith(
       '/api/admin/modules/12',
       expect.objectContaining({
@@ -244,7 +242,6 @@ describe('learning API client', () => {
         },
         body: JSON.stringify({
           title: 'Discrete Math',
-          description: 'Updated introduction.',
         }),
         credentials: 'same-origin',
       }),
@@ -559,18 +556,12 @@ describe('learning API client', () => {
       id: 12,
       key: 'discrete-math',
       title: 'Discrete Math',
-      description: 'An introduction to discrete mathematics.',
       position: 0,
     }
     const fetch = vi.fn().mockResolvedValue(Response.json(createdModule))
     vi.stubGlobal('fetch', fetch)
     await expect(
-      createModule(
-        'csrf',
-        'discrete-math',
-        'Discrete Math',
-        'An introduction to discrete mathematics.',
-      ),
+      createModule('csrf', 'discrete-math', 'Discrete Math'),
     ).resolves.toEqual(createdModule)
     expect(fetch).toHaveBeenCalledWith(
       '/api/admin/modules',
@@ -583,7 +574,6 @@ describe('learning API client', () => {
         body: JSON.stringify({
           key: 'discrete-math',
           title: 'Discrete Math',
-          description: 'An introduction to discrete mathematics.',
         }),
         credentials: 'same-origin',
       }),

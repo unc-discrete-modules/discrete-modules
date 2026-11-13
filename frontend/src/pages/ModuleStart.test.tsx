@@ -14,7 +14,6 @@ vi.mock('@/hooks/use-modules', () => ({ useModule }))
 const moduleDetails: Module = {
   id: 8,
   title: 'Sets',
-  description: 'An introduction to sets.',
   display_order: 0,
   quiz_id: null,
   lessons: [],

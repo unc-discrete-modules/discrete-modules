@@ -45,7 +45,6 @@ def module(key: str, position: int, lessons, questions=None) -> ModuleRecord:
     return ModuleRecord(
         key=key,
         title=key.title(),
-        description=f"About {key}.",
         position=position,
         lessons=tuple(lessons),
         questions=None if questions is None else tuple(questions),

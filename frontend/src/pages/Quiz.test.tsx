@@ -31,7 +31,6 @@ const quiz = {
 const module = {
   id: 9,
   title: 'Proofs',
-  description: '',
   display_order: 9,
   quiz_id: 4,
   lessons: [

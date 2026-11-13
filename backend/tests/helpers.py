@@ -10,7 +10,6 @@ def add_module(session, position, title="Sets", with_quiz=False, lessons=()):
     module = Module(
         key=f"test-{uuid4().hex}",
         title=title,
-        description=f"About {title}.",
         position=position,
     )
     session.add(module)

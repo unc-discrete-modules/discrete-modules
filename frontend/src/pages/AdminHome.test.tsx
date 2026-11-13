@@ -73,8 +73,8 @@ vi.mock('@/components/admin/ModuleCreationDialog', () => ({
 }))
 
 const modules = [
-  { id: 1, title: 'First module', description: 'First', display_order: 0 },
-  { id: 2, title: 'Second module', description: 'Second', display_order: 1 },
+  { id: 1, title: 'First module', display_order: 0 },
+  { id: 2, title: 'Second module', display_order: 1 },
 ]
 
 function renderAdminHome(reorderResponse: Response) {
@@ -85,7 +85,9 @@ function renderAdminHome(reorderResponse: Response) {
     if (String(input) === '/api/admin/modules/order') {
       return Promise.resolve(reorderResponse)
     }
-    throw new Error(`Unexpected request: ${String(input)} ${init?.method ?? ''}`)
+    throw new Error(
+      `Unexpected request: ${String(input)} ${init?.method ?? ''}`,
+    )
   })
   vi.stubGlobal('fetch', fetchMock)
 
@@ -180,7 +182,9 @@ describe('admin module reorder', () => {
     expect(screen.getByText('1. First module')).toBeInTheDocument()
     expect(screen.getByText('2. Second module')).toBeInTheDocument()
     expect(
-      fetchMock.mock.calls.filter(([input]) => String(input) === '/api/modules'),
+      fetchMock.mock.calls.filter(
+        ([input]) => String(input) === '/api/modules',
+      ),
     ).toHaveLength(1)
   })
 })

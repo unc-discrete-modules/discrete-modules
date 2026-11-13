@@ -117,7 +117,6 @@ describe('Authentication', () => {
             {
               id: 2,
               title: 'Module 2',
-              description: 'Test module',
               display_order: 0,
             },
           ]),
@@ -128,7 +127,6 @@ describe('Authentication', () => {
           json({
             id: 2,
             title: 'Module 2',
-            description: 'Test module',
             display_order: 0,
             quiz_id: null,
             lessons: [],
@@ -137,10 +135,7 @@ describe('Authentication', () => {
       }
       return Promise.resolve(json([]))
     })
-    vi.stubGlobal(
-      'fetch',
-      fetch,
-    )
+    vi.stubGlobal('fetch', fetch)
     render(<App />)
     expect(
       await screen.findByRole('heading', { name: 'Module 2' }),

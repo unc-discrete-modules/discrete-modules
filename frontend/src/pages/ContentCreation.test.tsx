@@ -15,7 +15,6 @@ import QuizCreation from './QuizCreation'
 const module = {
   id: 12,
   title: 'Discrete Math',
-  description: 'Practice',
   display_order: 0,
   quiz_id: null,
   lessons: [],

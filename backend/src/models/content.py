@@ -33,7 +33,6 @@ class Module(ModelBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     key: str = Field(max_length=100, unique=True)
     title: str = Field(max_length=200)
-    description: str = Field(sa_type=Text)
     position: int = Field(unique=True)
     archived: bool = Field(
         default=False,

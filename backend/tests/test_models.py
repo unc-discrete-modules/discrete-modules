@@ -22,7 +22,6 @@ def create_module() -> Module:
     return Module(
         key=f"test-{unique_value.hex}",
         title="Sets",
-        description="An introduction to sets.",
         position=unique_value.int % 2_000_000_000,
     )
 

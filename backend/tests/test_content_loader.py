@@ -7,7 +7,7 @@ from src.models import QuestionType
 from src.services.content_loader import ContentError, load_content
 
 LESSON = "---\ntitle: Sets\n---\n\nA set is a collection.\n"
-MODULE = "title: Sets\ndescription: Sets and tuples.\n"
+MODULE = "title: Sets\n"
 
 
 def write(root: Path, relative: str, text: str) -> None:
@@ -30,7 +30,7 @@ def problems_for(content_dir: Path) -> str:
 
 
 def test_loads_modules_lessons_and_positions_from_names(content):
-    write(content, "02-logic/module.yaml", "title: Logic\ndescription: Logic.\n")
+    write(content, "02-logic/module.yaml", "title: Logic\n")
     write(
         content,
         "02-logic/02-second.md",
@@ -107,7 +107,7 @@ def test_image_links_point_at_the_served_content_path(content):
         ("01-sets/01-intro.md", "---\ntitle: X\nvideo: y\n---\nB\n", "unknown field"),
         ("01-sets/01-intro.md", "---\nvideo_url: https://e.com\n---\nB\n", "'title'"),
         ("01-sets/01-intro.md", "---\ntitle: X\nvideo_url: ftp://e\n---\nB\n", "http"),
-        ("01-sets/module.yaml", "title: Sets\n", "'description'"),
+        ("01-sets/module.yaml", "title: Sets\ndescription: S\n", "unknown field"),
         ("01-sets/Intro.md", LESSON, "NN-lowercase-key"),
         ("01-sets/01-intro.md", "---\ntitle: X\n---\n", "body is empty"),
     ],
@@ -178,19 +178,19 @@ def test_reports_invalid_quizzes(content, quiz, expected):
 
 
 def test_reports_duplicate_module_positions(content):
-    write(content, "01-logic/module.yaml", "title: L\ndescription: L.\n")
+    write(content, "01-logic/module.yaml", "title: L\n")
     write(content, "01-logic/01-a.md", LESSON)
 
     assert "duplicate module position" in problems_for(content)
 
 
 def test_lists_every_problem_at_once(content):
-    write(content, "01-sets/module.yaml", "title: Sets\n")
+    write(content, "01-sets/module.yaml", "title: Sets\nsummary: S\n")
     write(content, "01-sets/01-intro.md", "no front matter\n")
 
     message = problems_for(content)
 
-    assert "'description'" in message
+    assert "unknown field" in message
     assert "front matter" in message
 
 

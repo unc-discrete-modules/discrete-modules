@@ -40,7 +40,6 @@ def content(db_session: Session) -> Content:
     module = Module(
         key=f"progress-{unique.hex}",
         title="Progress",
-        description="Progress test module",
         position=unique.int % 2_000_000_000,
     )
     lesson = Lesson(key="intro", title="Intro", body="Body", position=0)

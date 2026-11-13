@@ -116,7 +116,6 @@ def module_data(row: Module) -> ModuleResponse:
         id=row.id,
         key=row.key,
         title=row.title,
-        description=row.description,
         position=row.position,
         archived=row.archived,
     )

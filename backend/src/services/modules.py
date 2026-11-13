@@ -12,7 +12,6 @@ def _summary(row: models.Module, display_order: int) -> ModuleSummary:
     return ModuleSummary(
         id=row.id,
         title=row.title,
-        description=row.description,
         display_order=display_order,
     )
 

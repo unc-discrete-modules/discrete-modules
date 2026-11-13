@@ -9,7 +9,6 @@ class LessonSummary(BaseModel):
 class ModuleSummary(BaseModel):
     id: int
     title: str
-    description: str
     display_order: int = Field(description="Position in the module list, from 0.")
 
 

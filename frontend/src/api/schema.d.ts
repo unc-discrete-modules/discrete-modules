@@ -747,8 +747,6 @@ export interface components {
             id: number;
             /** Title */
             title: string;
-            /** Description */
-            description: string;
             /**
              * Display Order
              * @description Position in the module list, from 0.
@@ -771,8 +769,6 @@ export interface components {
             key: string;
             /** Title */
             title: string;
-            /** Description */
-            description: string;
         };
         /** ModuleOverview */
         ModuleOverview: {
@@ -807,8 +803,6 @@ export interface components {
         ModulePatch: {
             /** Title */
             title?: string | null;
-            /** Description */
-            description?: string | null;
         };
         /** ModuleProgress */
         ModuleProgress: {
@@ -835,8 +829,6 @@ export interface components {
             key: string;
             /** Title */
             title: string;
-            /** Description */
-            description: string;
             /** Position */
             position: number;
             /** Archived */
@@ -848,8 +840,6 @@ export interface components {
             id: number;
             /** Title */
             title: string;
-            /** Description */
-            description: string;
             /**
              * Display Order
              * @description Position in the module list, from 0.
