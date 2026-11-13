@@ -165,113 +165,107 @@ export default function LessonEditor({
         aria-label="Lesson editor"
         className="max-w-4xl space-y-5"
       >
-        {/* Locked while saving: the fields are replaced with what the server
-            stored, which would discard anything typed meanwhile. */}
-        <fieldset disabled={saving} className="min-w-0 space-y-5">
-          {view === 'edit' ? (
-            <>
-              <div className="space-y-1">
-                <Label
-                  htmlFor={`${baseId}-title`}
-                  className="text-lg font-bold text-muted-navy"
-                >
-                  Title
-                </Label>
-                <Input
-                  id={`${baseId}-title`}
-                  aria-describedby={`${baseId}-title-problem`}
-                  aria-invalid={Boolean(problems?.title)}
-                  maxLength={MAX_TITLE_LENGTH}
-                  className="h-auto rounded-sm border-3 border-stone-200 bg-white py-2"
-                  value={fields.title}
-                  onChange={(event) => change({ title: event.target.value })}
-                />
-                <Problem id={`${baseId}-title-problem`}>
-                  {problems?.title}
-                </Problem>
-              </div>
-
-              <div className="space-y-1">
-                <Label
-                  htmlFor={`${baseId}-videoUrl`}
-                  className="text-lg font-bold text-muted-navy"
-                >
-                  Video link{' '}
-                  <span className="text-sm font-normal">(optional)</span>
-                </Label>
-                <Input
-                  id={`${baseId}-videoUrl`}
-                  type="url"
-                  aria-describedby={`${baseId}-videoUrl-problem`}
-                  aria-invalid={Boolean(problems?.videoUrl)}
-                  maxLength={MAX_VIDEO_URL_LENGTH}
-                  className="h-auto rounded-sm border-3 border-stone-200 bg-white py-2"
-                  value={fields.videoUrl}
-                  onChange={(event) => change({ videoUrl: event.target.value })}
-                />
-                <Problem id={`${baseId}-videoUrl-problem`}>
-                  {problems?.videoUrl}
-                </Problem>
-              </div>
-
-              <div className="space-y-1">
-                <Label
-                  htmlFor={`${baseId}-body`}
-                  className="text-lg font-bold text-muted-navy"
-                >
-                  Lesson (Markdown)
-                </Label>
-                <p
-                  id={`${baseId}-body-hint`}
-                  className="text-sm text-muted-foreground"
-                >
-                  Markdown, with LaTeX math between dollar signs, such as $x^2$.
-                  Start headings at ##, because the title is the lesson&apos;s
-                  heading. A section titled &quot;## Learning Objectives&quot;
-                  is shown as the overview.
-                </p>
-                <Textarea
-                  id={`${baseId}-body`}
-                  aria-describedby={`${baseId}-body-hint ${baseId}-body-problem`}
-                  aria-invalid={Boolean(problems?.body)}
-                  className="h-[28rem] resize-y rounded-sm border-3 border-stone-200 bg-white font-mono"
-                  value={fields.body}
-                  onChange={(event) => change({ body: event.target.value })}
-                />
-                <Problem id={`${baseId}-body-problem`}>
-                  {problems?.body}
-                </Problem>
-              </div>
-            </>
-          ) : (
-            <section
-              aria-labelledby={`${baseId}-preview`}
-              className="space-y-2"
-            >
-              <h2
-                id={`${baseId}-preview`}
+        {view === 'edit' ? (
+          // Locked while saving: the fields are replaced with what the server
+          // stored, which would discard anything typed meanwhile. The preview
+          // has no fields, so it is left out of the lock.
+          <fieldset disabled={saving} className="min-w-0 space-y-5">
+            <div className="space-y-1">
+              <Label
+                htmlFor={`${baseId}-title`}
                 className="text-lg font-bold text-muted-navy"
               >
-                Preview
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                How students will see the lesson, including changes you
-                haven&apos;t saved.
-              </p>
-              <LessonPreviewBody
-                title={fields.title.trim() || 'Untitled lesson'}
-                videoUrl={
-                  isHttpUrl(fields.videoUrl.trim())
-                    ? fields.videoUrl.trim()
-                    : null
-                }
-                body={fields.body}
-                moduleId={lesson.module_id}
-                lessonNumber={lessonNumber}
+                Title
+              </Label>
+              <Input
+                id={`${baseId}-title`}
+                aria-describedby={`${baseId}-title-problem`}
+                aria-invalid={Boolean(problems?.title)}
+                maxLength={MAX_TITLE_LENGTH}
+                className="h-auto rounded-sm border-3 border-stone-200 bg-white py-2"
+                value={fields.title}
+                onChange={(event) => change({ title: event.target.value })}
               />
-            </section>
-          )}
-        </fieldset>
+              <Problem id={`${baseId}-title-problem`}>
+                {problems?.title}
+              </Problem>
+            </div>
+
+            <div className="space-y-1">
+              <Label
+                htmlFor={`${baseId}-videoUrl`}
+                className="text-lg font-bold text-muted-navy"
+              >
+                Video link{' '}
+                <span className="text-sm font-normal">(optional)</span>
+              </Label>
+              <Input
+                id={`${baseId}-videoUrl`}
+                type="url"
+                aria-describedby={`${baseId}-videoUrl-problem`}
+                aria-invalid={Boolean(problems?.videoUrl)}
+                maxLength={MAX_VIDEO_URL_LENGTH}
+                className="h-auto rounded-sm border-3 border-stone-200 bg-white py-2"
+                value={fields.videoUrl}
+                onChange={(event) => change({ videoUrl: event.target.value })}
+              />
+              <Problem id={`${baseId}-videoUrl-problem`}>
+                {problems?.videoUrl}
+              </Problem>
+            </div>
+
+            <div className="space-y-1">
+              <Label
+                htmlFor={`${baseId}-body`}
+                className="text-lg font-bold text-muted-navy"
+              >
+                Lesson (Markdown)
+              </Label>
+              <p
+                id={`${baseId}-body-hint`}
+                className="text-sm text-muted-foreground"
+              >
+                Markdown, with LaTeX math between dollar signs, such as $x^2$.
+                Start headings at ##, because the title is the lesson&apos;s
+                heading. A section titled &quot;## Learning Objectives&quot; is
+                shown as the overview.
+              </p>
+              <Textarea
+                id={`${baseId}-body`}
+                aria-describedby={`${baseId}-body-hint ${baseId}-body-problem`}
+                aria-invalid={Boolean(problems?.body)}
+                className="h-[28rem] resize-y rounded-sm border-3 border-stone-200 bg-white font-mono"
+                value={fields.body}
+                onChange={(event) => change({ body: event.target.value })}
+              />
+              <Problem id={`${baseId}-body-problem`}>{problems?.body}</Problem>
+            </div>
+          </fieldset>
+        ) : (
+          <section aria-labelledby={`${baseId}-preview`} className="space-y-2">
+            <h2
+              id={`${baseId}-preview`}
+              className="text-lg font-bold text-muted-navy"
+            >
+              Preview
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              How students will see the lesson, including changes you
+              haven&apos;t saved.
+            </p>
+            <LessonPreviewBody
+              title={fields.title.trim() || 'Untitled lesson'}
+              videoUrl={
+                isHttpUrl(fields.videoUrl.trim())
+                  ? fields.videoUrl.trim()
+                  : null
+              }
+              body={fields.body}
+              moduleId={lesson.module_id}
+              lessonNumber={lessonNumber}
+            />
+          </section>
+        )}
 
         {notice && (
           <p role="status" className="text-sm font-bold text-muted-navy">

@@ -422,4 +422,47 @@ describe('LessonEditor', () => {
     expect(field('Title')).toBeEnabled()
     expect(field('Title')).toHaveValue('Keep me')
   })
+
+  it('does not lock the preview while saving, since it has no fields', async () => {
+    let finish: () => void = () => {}
+    const fetchMock = vi.fn<typeof fetch>(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = () => resolve(Response.json({ ...lesson, title: 'One' }))
+        }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    renderEditor()
+    type('Title', 'One')
+    fireEvent.click(view('Preview'))
+
+    fireEvent.click(save())
+    await waitFor(() => expect(save()).toBeDisabled())
+
+    const preview = screen.getByRole('region', { name: 'Preview' })
+    expect(preview.closest('fieldset')).toBeNull()
+    expect(preview.querySelector(':disabled')).toBeNull()
+    finish()
+    await screen.findByRole('status')
+  })
+
+  it('still locks the fields in the edit view while saving', async () => {
+    let finish: () => void = () => {}
+    const fetchMock = vi.fn<typeof fetch>(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = () => resolve(Response.json({ ...lesson, title: 'One' }))
+        }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    renderEditor()
+    type('Title', 'One')
+
+    fireEvent.click(save())
+    await waitFor(() => expect(save()).toBeDisabled())
+
+    expect(field('Title').closest('fieldset')).toBeDisabled()
+    finish()
+    await screen.findByRole('status')
+  })
 })
