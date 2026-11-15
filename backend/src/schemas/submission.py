@@ -44,3 +44,35 @@ class QuestionResult(BaseModel):
 
 class SubmissionResult(BaseModel):
     results: list[QuestionResult]
+
+
+class AttemptSummary(BaseModel):
+    id: int
+    score: int
+    max_score: int = Field(description="Auto-graded questions in this attempt.")
+    submitted_at: int = Field(description="Unix time of the submission.")
+
+
+class AttemptAnswer(BaseModel):
+    question_id: int
+    option_id: int | None = Field(
+        default=None,
+        description=(
+            "Chosen option for multiple choice. Null when the option text was "
+            "edited after the attempt, so it no longer matches."
+        ),
+    )
+    text: str | None = Field(
+        default=None, description="Typed answer; null for multiple choice."
+    )
+
+
+class AttemptDetail(AttemptSummary):
+    """An attempt in the shape the feedback view needs.
+
+    Verdicts are the ones recorded at submission. Answer keys come from the quiz
+    as it is now, and questions archived since then are left out.
+    """
+
+    answers: list[AttemptAnswer]
+    result: SubmissionResult

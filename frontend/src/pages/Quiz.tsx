@@ -1,6 +1,7 @@
 import { useState, type SubmitEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { submitQuiz } from '@/api/client'
+import AttemptHistory from '@/components/quiz/AttemptHistory'
 import QuizFeedback from '@/components/quiz/QuizFeedback'
 import QuizQuestion from '@/components/quiz/QuizQuestion'
 import { ErrorState, LoadingState } from '@/components/RequestState'
@@ -9,12 +10,13 @@ import { useAuth } from '@/context/auth-context-value'
 import { useModule } from '@/hooks/use-modules'
 import { useQuiz } from '@/hooks/use-quiz'
 import {
+  answerValuesFromAttempt,
   buildAnswers,
   isAnswered,
   unansweredQuestions,
   type AnswerValues,
 } from '@/lib/quiz-answers'
-import type { SubmissionResult } from '@/types/types'
+import type { AttemptDetail, SubmissionResult } from '@/types/types'
 
 export default function Quiz() {
   const { moduleId, quizId } = useParams()
@@ -95,6 +97,11 @@ function QuizAttempt() {
     setResult(null)
   }
 
+  function reviewAttempt(attempt: AttemptDetail) {
+    setValues(answerValuesFromAttempt(attempt))
+    setResult(attempt.result)
+  }
+
   if (result) {
     return (
       <QuizFeedback
@@ -120,6 +127,9 @@ function QuizAttempt() {
       <h1 className="text-4xl font-semibold text-slate-700">
         Module {moduleId} Quiz
       </h1>
+      {auth.status === 'authenticated' ? (
+        <AttemptHistory quizId={quiz.id} onReview={reviewAttempt} />
+      ) : null}
       <form noValidate onSubmit={handleSubmit} className="mt-8 space-y-12">
         <fieldset disabled={submitting} className="space-y-12">
           {quiz.questions.map((question, index) => (

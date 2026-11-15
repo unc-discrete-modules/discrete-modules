@@ -4,6 +4,8 @@ import {
   ApiError,
   completeLesson,
   getMyProgress,
+  getQuizAttempt,
+  getQuizAttempts,
   createLesson,
   createModule,
   createQuiz,
@@ -104,6 +106,30 @@ describe('learning API client', () => {
       )
     },
   )
+
+  it('loads quiz attempts and rejects malformed ones', async () => {
+    const summary = { id: 5, score: 1, max_score: 2, submitted_at: 9 }
+    const detail = {
+      ...summary,
+      answers: [{ question_id: 1, option_id: 2, text: null }],
+      result: { results: [] },
+    }
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json([summary]))
+      .mockResolvedValueOnce(Response.json(detail))
+      .mockResolvedValueOnce(Response.json([{ id: 5 }]))
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(getQuizAttempts(4)).resolves.toEqual([summary])
+    await expect(getQuizAttempt(4, 5)).resolves.toEqual(detail)
+    await expect(getQuizAttempts(4)).rejects.toThrow('invalid response')
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual([
+      '/api/quizzes/4/attempts',
+      '/api/quizzes/4/attempts/5',
+      '/api/quizzes/4/attempts',
+    ])
+  })
 
   it('loads progress and saves lesson completion with the CSRF token', async () => {
     const progress = [
