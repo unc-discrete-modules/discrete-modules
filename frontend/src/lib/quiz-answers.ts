@@ -1,4 +1,9 @@
-import type { Answer, Question } from '@/types/types'
+import type {
+  Answer,
+  AttemptSummary,
+  AttemptDetail,
+  Question,
+} from '@/types/types'
 
 export const MAX_ANSWER_LENGTH = 10_000
 
@@ -30,4 +35,28 @@ export function buildAnswers(
     }
     return { question_id: question.id, type: question.type, text: value }
   })
+}
+
+// Multiple choice values are option ids, matching what the quiz form produces.
+export function answerValuesFromAttempt(attempt: AttemptDetail): AnswerValues {
+  return Object.fromEntries(
+    attempt.answers.map((answer) => [
+      answer.question_id,
+      answer.option_id != null ? String(answer.option_id) : (answer.text ?? ''),
+    ]),
+  )
+}
+
+// Compares fractions because the number of graded questions can differ between
+// attempts. Ties go to the latest, which comes first in the newest-first list.
+export function bestAttempt(
+  attempts: AttemptSummary[],
+): AttemptSummary | undefined {
+  const fraction = (attempt: AttemptSummary) =>
+    attempt.max_score ? attempt.score / attempt.max_score : 0
+  return attempts.reduce<AttemptSummary | undefined>(
+    (best, attempt) =>
+      best === undefined || fraction(attempt) > fraction(best) ? attempt : best,
+    undefined,
+  )
 }

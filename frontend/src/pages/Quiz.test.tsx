@@ -70,9 +70,35 @@ function Location() {
   )
 }
 
-function stubApi(submit: () => Promise<Response> = () => json(result)) {
+const attempts = [
+  { id: 31, score: 1, max_score: 2, submitted_at: 2_000_000 },
+  { id: 30, score: 2, max_score: 2, submitted_at: 1_000_000 },
+]
+
+const attemptDetail = {
+  ...attempts[0],
+  answers: [
+    { question_id: 1, option_id: 11, text: null },
+    { question_id: 2, option_id: null, text: 'induction' },
+    { question_id: 3, option_id: null, text: 'My essay.' },
+  ],
+  result: {
+    results: [
+      { ...result.results[0], correct: false },
+      { ...result.results[1], correct: false },
+      result.results[2],
+    ],
+  },
+}
+
+function stubApi(
+  submit: () => Promise<Response> = () => json(result),
+  history: () => Promise<Response> = () => json(attempts),
+) {
   const fetch = vi.fn((path: string, init?: RequestInit) => {
     if (init?.method === 'POST') return submit()
+    if (path === '/api/quizzes/4/attempts') return history()
+    if (path === '/api/quizzes/4/attempts/31') return json(attemptDetail)
     if (path === '/api/modules/9/quiz') return json(quiz)
     if (path === '/api/modules/9') return json(module)
     return json({}, 404)
@@ -290,5 +316,132 @@ describe('Quiz page', () => {
     expect(await screen.findByTestId('location')).toHaveTextContent(
       '/modules/9/lessons/21',
     )
+  })
+
+  describe('past attempts', () => {
+    async function openHistory() {
+      await screen.findByText('Question 1')
+      fireEvent.click(
+        await screen.findByRole('button', { name: /Past attempts/ }),
+      )
+    }
+
+    it('summarizes the best score while collapsed and lists attempts when opened', async () => {
+      stubApi()
+      renderQuiz()
+
+      const trigger = await screen.findByRole('button', {
+        name: /Past attempts \(2\)/,
+      })
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      expect(trigger).toHaveTextContent('Best score: 2 of 2')
+      expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+
+      fireEvent.click(trigger)
+
+      const rows = await screen.findAllByRole('listitem')
+      expect(rows).toHaveLength(2)
+      expect(rows[0]).toHaveTextContent('1 of 2')
+      expect(rows[1]).toHaveTextContent('2 of 2')
+    })
+
+    it('offers review only for the latest attempt', async () => {
+      stubApi()
+      renderQuiz()
+      await openHistory()
+
+      expect(
+        await screen.findAllByRole('button', { name: 'Review feedback' }),
+      ).toHaveLength(1)
+      expect(
+        screen.getAllByRole('listitem')[0].querySelector('button'),
+      ).not.toBeNull()
+    })
+
+    it('shows an empty state when there are no attempts', async () => {
+      stubApi(undefined, () => json([]))
+      renderQuiz()
+      await openHistory()
+
+      expect(await screen.findByText('No attempts yet.')).toBeInTheDocument()
+    })
+
+    it('reopens the feedback for the latest attempt', async () => {
+      const fetch = stubApi()
+      renderQuiz()
+      await openHistory()
+
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Review feedback' }),
+      )
+
+      await screen.findByRole('heading', { name: 'Quiz results' })
+      expect(screen.getByText(/Score: 0 of 2/)).toBeInTheDocument()
+      expect(screen.getByText('induction')).toBeInTheDocument()
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/quizzes/4/attempts/31',
+        expect.anything(),
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+      expect(await screen.findByText('Question 1')).toBeInTheDocument()
+      screen.getAllByRole('textbox').forEach((box) => {
+        expect(box).toHaveValue('')
+      })
+    })
+
+    it('keeps the quiz usable when the history cannot be loaded', async () => {
+      stubApi(undefined, () => json({}, 500))
+      renderQuiz()
+      await openHistory()
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Unable to load this content.',
+      )
+      expect(screen.getByText('Question 1')).toBeInTheDocument()
+    })
+
+    it('reports a failure to load the latest attempt', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((path: string) => {
+          if (path === '/api/modules/9/quiz') return json(quiz)
+          if (path === '/api/modules/9') return json(module)
+          if (path === '/api/quizzes/4/attempts') return json(attempts)
+          return json({}, 500)
+        }),
+      )
+      renderQuiz()
+      await openHistory()
+
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Review feedback' }),
+      )
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Unable to load this attempt.',
+      )
+      expect(
+        screen.getByRole('button', { name: 'Review feedback' }),
+      ).toBeEnabled()
+    })
+
+    it('shows the new attempt after submitting and retrying', async () => {
+      let calls = 0
+      stubApi(undefined, () => {
+        calls += 1
+        return json(calls === 1 ? [] : attempts)
+      })
+      renderQuiz()
+      await answerEverything()
+      fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+      await screen.findByRole('heading', { name: 'Quiz results' })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+
+      expect(
+        await screen.findByRole('button', { name: /Past attempts \(2\)/ }),
+      ).toBeInTheDocument()
+    })
   })
 })

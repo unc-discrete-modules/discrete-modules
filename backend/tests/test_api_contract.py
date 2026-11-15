@@ -40,6 +40,8 @@ def test_openapi_documents_every_contract_route():
         "/api/lessons/{lesson_id}/complete",
         "/api/me/progress",
         "/api/quizzes/{quiz_id}/submissions",
+        "/api/quizzes/{quiz_id}/attempts",
+        "/api/quizzes/{quiz_id}/attempts/{attempt_id}",
         "/api/healthz",
         "/api/auth/login",
         "/api/auth/metadata",
@@ -52,6 +54,8 @@ def test_openapi_documents_every_contract_route():
         ("/api/lessons/{lesson_id}", "get"),
         ("/api/modules/{module_id}/quiz", "get"),
         ("/api/quizzes/{quiz_id}/submissions", "post"),
+        ("/api/quizzes/{quiz_id}/attempts", "get"),
+        ("/api/quizzes/{quiz_id}/attempts/{attempt_id}", "get"),
         ("/api/modules/{module_id}/progress", "get"),
         ("/api/lessons/{lesson_id}/complete", "post"),
     ]:

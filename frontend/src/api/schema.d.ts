@@ -382,6 +382,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quizzes/{quiz_id}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the signed-in user's attempts at a quiz, newest first */
+        get: operations["list_quiz_attempts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quizzes/{quiz_id}/attempts/{attempt_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one of the signed-in user's attempts with its feedback */
+        get: operations["get_quiz_attempt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me/progress": {
         parameters: {
             query?: never;
@@ -527,6 +561,64 @@ export interface components {
             id: number;
             /** Text */
             text: string;
+        };
+        /** AttemptAnswer */
+        AttemptAnswer: {
+            /** Question Id */
+            question_id: number;
+            /**
+             * Option Id
+             * @description Chosen option for multiple choice. Null when the option text was edited after the attempt, so it no longer matches.
+             */
+            option_id?: number | null;
+            /**
+             * Text
+             * @description Typed answer; null for multiple choice.
+             */
+            text?: string | null;
+        };
+        /**
+         * AttemptDetail
+         * @description An attempt in the shape the feedback view needs.
+         *
+         *     Verdicts are the ones recorded at submission. Answer keys come from the quiz
+         *     as it is now, and questions archived since then are left out.
+         */
+        AttemptDetail: {
+            /** Id */
+            id: number;
+            /** Score */
+            score: number;
+            /**
+             * Max Score
+             * @description Auto-graded questions in this attempt.
+             */
+            max_score: number;
+            /**
+             * Submitted At
+             * @description Unix time of the submission.
+             */
+            submitted_at: number;
+            /** Answers */
+            answers: components["schemas"]["AttemptAnswer"][];
+            result: components["schemas"]["SubmissionResult"];
+        };
+        /** AttemptSummary */
+        AttemptSummary: {
+            /** Id */
+            id: number;
+            /** Score */
+            score: number;
+            /**
+             * Max Score
+             * @description Auto-graded questions in this attempt.
+             */
+            max_score: number;
+            /**
+             * Submitted At
+             * @description Unix time of the submission.
+             */
+            submitted_at: number;
         };
         /** BestAttempt */
         BestAttempt: {
@@ -2846,6 +2938,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SubmissionResult"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_quiz_attempts: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for write requests. Get the token from GET /api/auth/me. */
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                quiz_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptSummary"][];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_quiz_attempt: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for write requests. Get the token from GET /api/auth/me. */
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                quiz_id: number;
+                attempt_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptDetail"];
                 };
             };
             /** @description Authentication required */

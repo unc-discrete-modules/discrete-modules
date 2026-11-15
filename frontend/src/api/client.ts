@@ -1,6 +1,8 @@
 import { apiFetch } from '@/api'
 import type {
   AdminQuiz,
+  AttemptDetail,
+  AttemptSummary,
   ErrorResponse,
   Lesson,
   LessonCompletionResponse,
@@ -524,6 +526,55 @@ export function submitQuiz(
     body: JSON.stringify(submission),
     signal: options.signal,
   })
+}
+
+function isAttemptSummary(value: unknown): value is AttemptSummary {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'number' &&
+    typeof value.score === 'number' &&
+    typeof value.max_score === 'number' &&
+    typeof value.submitted_at === 'number'
+  )
+}
+
+function isAttemptDetail(value: unknown): value is AttemptDetail {
+  if (!isAttemptSummary(value)) return false
+  const { answers, result } = value as Record<string, unknown>
+  return (
+    Array.isArray(answers) &&
+    answers.every(
+      (answer: unknown) =>
+        isRecord(answer) && typeof answer.question_id === 'number',
+    ) &&
+    isRecord(result) &&
+    Array.isArray(result.results)
+  )
+}
+
+// Newest first.
+export function getQuizAttempts(
+  quizId: number,
+  signal?: AbortSignal,
+): Promise<AttemptSummary[]> {
+  return requestJson(
+    `/quizzes/${quizId}/attempts`,
+    { signal },
+    (value): value is AttemptSummary[] =>
+      Array.isArray(value) && value.every(isAttemptSummary),
+  )
+}
+
+export function getQuizAttempt(
+  quizId: number,
+  attemptId: number,
+  signal?: AbortSignal,
+): Promise<AttemptDetail> {
+  return requestJson(
+    `/quizzes/${quizId}/attempts/${attemptId}`,
+    { signal },
+    isAttemptDetail,
+  )
 }
 
 export function deleteQuiz(quizId: number, csrfToken: string): Promise<void> {
