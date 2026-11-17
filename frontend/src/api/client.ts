@@ -540,13 +540,14 @@ function isAttemptSummary(value: unknown): value is AttemptSummary {
 
 function isAttemptDetail(value: unknown): value is AttemptDetail {
   if (!isAttemptSummary(value)) return false
-  const { answers, result } = value as Record<string, unknown>
+  const { answers, result, quiz_changed } = value as Record<string, unknown>
   return (
     Array.isArray(answers) &&
     answers.every(
       (answer: unknown) =>
         isRecord(answer) && typeof answer.question_id === 'number',
     ) &&
+    typeof quiz_changed === 'boolean' &&
     isRecord(result) &&
     Array.isArray(result.results)
   )

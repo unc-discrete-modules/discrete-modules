@@ -9,7 +9,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { useQuizAttempts } from '@/hooks/use-quiz-attempts'
-import { bestAttempt } from '@/lib/quiz-answers'
+import { bestAttempt, formatAttemptDate } from '@/lib/quiz-answers'
 import type { AttemptDetail, AttemptSummary } from '@/types/types'
 
 type AttemptHistoryProps = {
@@ -29,17 +29,17 @@ export default function AttemptHistory({
 }: AttemptHistoryProps) {
   const { attempts, loading, error, retry } = useQuizAttempts(quizId)
   const [open, setOpen] = useState(false)
-  const [reviewing, setReviewing] = useState(false)
+  const [reviewingId, setReviewingId] = useState<number | null>(null)
   const [reviewError, setReviewError] = useState<string | null>(null)
 
   async function review(attemptId: number) {
-    setReviewing(true)
+    setReviewingId(attemptId)
     setReviewError(null)
     try {
       onReview(await getQuizAttempt(quizId, attemptId))
     } catch {
       setReviewError('Unable to load this attempt. Please try again.')
-      setReviewing(false)
+      setReviewingId(null)
     }
   }
 
@@ -72,27 +72,26 @@ export default function AttemptHistory({
         ) : null}
         {attempts?.length ? (
           <ul className="space-y-2 pl-7">
-            {attempts.map((attempt, index) => (
+            {attempts.map((attempt) => (
               <li
                 key={attempt.id}
                 className="flex items-center gap-4 text-base text-slate-700"
               >
                 <span className="text-slate-500">
-                  {new Date(attempt.submitted_at * 1000).toLocaleString()}
+                  {formatAttemptDate(attempt)}
                 </span>
                 <span className="font-medium">{scoreText(attempt)}</span>
-                {index === 0 ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="ml-auto"
-                    disabled={reviewing}
-                    onClick={() => void review(attempt.id)}
-                  >
-                    {reviewing ? 'Loading…' : 'Review feedback'}
-                  </Button>
-                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto"
+                  aria-label={`Review feedback for attempt on ${formatAttemptDate(attempt)}`}
+                  disabled={reviewingId !== null}
+                  onClick={() => void review(attempt.id)}
+                >
+                  {reviewingId === attempt.id ? 'Loading…' : 'Review feedback'}
+                </Button>
               </li>
             ))}
           </ul>

@@ -126,6 +126,7 @@ def test_attempt_detail_matches_the_feedback_view(
             {"question_id": quiz["blank"].id, "option_id": None, "text": "typed"},
             {"question_id": quiz["essay"].id, "option_id": None, "text": "my essay"},
         ],
+        "quiz_changed": False,
         "result": {
             "results": [
                 {
@@ -162,6 +163,7 @@ def test_detail_omits_questions_archived_since(
 
     assert len(body["answers"]) == 2
     assert len(body["result"]["results"]) == 2
+    assert body["quiz_changed"] is True
 
 
 def test_detail_has_no_option_id_once_the_option_text_changed(
@@ -173,6 +175,18 @@ def test_detail_has_no_option_id_once_the_option_text_changed(
 
     assert body["answers"][0]["option_id"] is None
     assert body["result"]["results"][0]["correct"] is False
+    assert body["quiz_changed"] is True
+
+
+def test_detail_flags_questions_added_since(client, db_session, signed_in_user, quiz):
+    attempt = add_attempt(db_session, quiz, signed_in_user.id, 1, 100)
+    add_question(
+        db_session, quiz["module"], 3, QuestionType.FILL_IN_BLANK, expected="New"
+    )
+
+    body = client.get(f"/api/quizzes/{quiz['id']}/attempts/{attempt.id}").json()
+
+    assert body["quiz_changed"] is True
 
 
 def test_detail_is_404_for_other_users_missing_or_foreign_attempts(
