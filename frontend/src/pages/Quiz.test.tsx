@@ -77,6 +77,7 @@ const attempts = [
 
 const attemptDetail = {
   ...attempts[0],
+  quiz_changed: false,
   answers: [
     { question_id: 1, option_id: 11, text: null },
     { question_id: 2, option_id: null, text: 'induction' },
@@ -91,6 +92,23 @@ const attemptDetail = {
   },
 }
 
+const olderDetail = {
+  ...attempts[1],
+  quiz_changed: true,
+  answers: [
+    { question_id: 1, option_id: 10, text: null },
+    { question_id: 2, option_id: null, text: 'contrapositive' },
+    { question_id: 3, option_id: null, text: 'Old essay.' },
+  ],
+  result: {
+    results: [
+      result.results[0],
+      { ...result.results[1], correct: true },
+      result.results[2],
+    ],
+  },
+}
+
 function stubApi(
   submit: () => Promise<Response> = () => json(result),
   history: () => Promise<Response> = () => json(attempts),
@@ -99,6 +117,7 @@ function stubApi(
     if (init?.method === 'POST') return submit()
     if (path === '/api/quizzes/4/attempts') return history()
     if (path === '/api/quizzes/4/attempts/31') return json(attemptDetail)
+    if (path === '/api/quizzes/4/attempts/30') return json(olderDetail)
     if (path === '/api/modules/9/quiz') return json(quiz)
     if (path === '/api/modules/9') return json(module)
     return json({}, 404)
@@ -345,17 +364,15 @@ describe('Quiz page', () => {
       expect(rows[1]).toHaveTextContent('2 of 2')
     })
 
-    it('offers review only for the latest attempt', async () => {
+    it('offers review for every attempt', async () => {
       stubApi()
       renderQuiz()
       await openHistory()
 
-      expect(
-        await screen.findAllByRole('button', { name: 'Review feedback' }),
-      ).toHaveLength(1)
-      expect(
-        screen.getAllByRole('listitem')[0].querySelector('button'),
-      ).not.toBeNull()
+      const buttons = await screen.findAllByRole('button', {
+        name: /Review feedback for attempt on/,
+      })
+      expect(buttons).toHaveLength(2)
     })
 
     it('shows an empty state when there are no attempts', async () => {
@@ -372,7 +389,7 @@ describe('Quiz page', () => {
       await openHistory()
 
       fireEvent.click(
-        await screen.findByRole('button', { name: 'Review feedback' }),
+        (await screen.findAllByRole('button', { name: /Review feedback/ }))[0],
       )
 
       await screen.findByRole('heading', { name: 'Quiz results' })
@@ -415,15 +432,15 @@ describe('Quiz page', () => {
       await openHistory()
 
       fireEvent.click(
-        await screen.findByRole('button', { name: 'Review feedback' }),
+        (await screen.findAllByRole('button', { name: /Review feedback/ }))[0],
       )
 
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'Unable to load this attempt.',
       )
-      expect(
-        screen.getByRole('button', { name: 'Review feedback' }),
-      ).toBeEnabled()
+      screen
+        .getAllByRole('button', { name: /Review feedback/ })
+        .forEach((button) => expect(button).toBeEnabled())
     })
 
     it('shows the new attempt after submitting and retrying', async () => {
@@ -442,6 +459,52 @@ describe('Quiz page', () => {
       expect(
         await screen.findByRole('button', { name: /Past attempts \(2\)/ }),
       ).toBeInTheDocument()
+    })
+
+    it('reviews an older attempt with its own answers, date and a changed-quiz notice', async () => {
+      const fetch = stubApi()
+      renderQuiz()
+      await openHistory()
+
+      fireEvent.click(
+        (await screen.findAllByRole('button', { name: /Review feedback/ }))[1],
+      )
+
+      await screen.findByRole('heading', { name: 'Quiz results' })
+      expect(screen.getByText(/Score: 2 of 2/)).toBeInTheDocument()
+      expect(screen.getByText('Old essay.')).toBeInTheDocument()
+      expect(screen.getByText(/Attempt from /)).toBeInTheDocument()
+      expect(screen.getByText(/This quiz has changed/)).toBeInTheDocument()
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/quizzes/4/attempts/30',
+        expect.anything(),
+      )
+    })
+
+    it('shows no changed-quiz notice for an unchanged attempt', async () => {
+      stubApi()
+      renderQuiz()
+      await openHistory()
+
+      fireEvent.click(
+        (await screen.findAllByRole('button', { name: /Review feedback/ }))[0],
+      )
+
+      await screen.findByRole('heading', { name: 'Quiz results' })
+      expect(screen.getByText(/Attempt from /)).toBeInTheDocument()
+      expect(
+        screen.queryByText(/This quiz has changed/),
+      ).not.toBeInTheDocument()
+    })
+
+    it('does not label a just-submitted result as a past attempt', async () => {
+      stubApi()
+      renderQuiz()
+      await answerEverything()
+      fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await screen.findByRole('heading', { name: 'Quiz results' })
+      expect(screen.queryByText(/Attempt from /)).not.toBeInTheDocument()
     })
   })
 })

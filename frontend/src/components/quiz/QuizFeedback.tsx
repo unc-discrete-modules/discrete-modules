@@ -15,6 +15,8 @@ type QuizFeedbackProps = {
   quiz: Quiz
   values: AnswerValues
   result: SubmissionResult
+  // Set only when reviewing a past attempt.
+  past?: { submittedAt: string; quizChanged: boolean }
   onRetry: () => void
   onBack: () => void
 }
@@ -71,6 +73,7 @@ export default function QuizFeedback({
   quiz,
   values,
   result,
+  past,
   onRetry,
   onBack,
 }: QuizFeedbackProps) {
@@ -94,6 +97,17 @@ export default function QuizFeedback({
       >
         Quiz results
       </h1>
+      {past ? (
+        <p className="mt-2 text-base text-slate-500">
+          Attempt from {past.submittedAt}
+        </p>
+      ) : null}
+      {past?.quizChanged ? (
+        <p className="mt-1 text-base text-slate-500">
+          This quiz has changed since this attempt, so some questions or answers
+          may be missing.
+        </p>
+      ) : null}
       <p className="mt-4 text-xl font-medium text-slate-700">
         Score: {correctCount} of {graded.length} auto-graded questions correct
       </p>

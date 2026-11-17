@@ -1,4 +1,4 @@
-import { useState, type SubmitEvent } from 'react'
+import { useState, type ComponentProps, type SubmitEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { submitQuiz } from '@/api/client'
 import AttemptHistory from '@/components/quiz/AttemptHistory'
@@ -12,6 +12,7 @@ import { useQuiz } from '@/hooks/use-quiz'
 import {
   answerValuesFromAttempt,
   buildAnswers,
+  formatAttemptDate,
   isAnswered,
   unansweredQuestions,
   type AnswerValues,
@@ -40,6 +41,8 @@ function QuizAttempt() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [result, setResult] = useState<SubmissionResult | null>(null)
+  const [past, setPast] =
+    useState<ComponentProps<typeof QuizFeedback>['past']>()
 
   if (!validModuleId) {
     return <ErrorState error={new Error('Quiz not found.')} />
@@ -95,11 +98,16 @@ function QuizAttempt() {
     setAttemptedSubmit(false)
     setSubmitError(null)
     setResult(null)
+    setPast(undefined)
   }
 
   function reviewAttempt(attempt: AttemptDetail) {
     setValues(answerValuesFromAttempt(attempt))
     setResult(attempt.result)
+    setPast({
+      submittedAt: formatAttemptDate(attempt),
+      quizChanged: attempt.quiz_changed,
+    })
   }
 
   if (result) {
@@ -108,6 +116,7 @@ function QuizAttempt() {
         quiz={quiz}
         values={values}
         result={result}
+        past={past}
         onRetry={restart}
         onBack={() =>
           void navigate(

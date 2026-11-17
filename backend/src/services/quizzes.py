@@ -89,10 +89,18 @@ def get_attempt(
     )
     answers = [_answer(questions[item.question_id], item.answer) for item in kept]
     results = [_result(questions[item.question_id], item.correct) for item in kept]
+    answered = {item.question_id for item in responses}
     return AttemptDetail(
         **_summary(attempt).model_dump(),
         answers=answers,
         result=SubmissionResult(results=results),
+        quiz_changed=(
+            len(kept) < len(responses)
+            or not questions.keys() <= answered
+            or any(
+                answer.option_id is None and answer.text is None for answer in answers
+            )
+        ),
     )
 
 

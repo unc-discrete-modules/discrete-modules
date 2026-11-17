@@ -76,3 +76,10 @@ class AttemptDetail(AttemptSummary):
 
     answers: list[AttemptAnswer]
     result: SubmissionResult
+    quiz_changed: bool = Field(
+        description=(
+            "True when questions or options were archived, added or reworded "
+            "since the attempt, so the review is incomplete. Edited prompts and "
+            "answer keys cannot be detected."
+        )
+    )

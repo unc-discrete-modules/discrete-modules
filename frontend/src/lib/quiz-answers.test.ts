@@ -34,6 +34,7 @@ describe('answerValuesFromAttempt', () => {
         { question_id: 3, option_id: null, text: null },
       ],
       result: { results: [] },
+      quiz_changed: false,
     } satisfies AttemptDetail
 
     expect(answerValuesFromAttempt(detail)).toEqual({

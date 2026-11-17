@@ -60,3 +60,7 @@ export function bestAttempt(
     undefined,
   )
 }
+
+export function formatAttemptDate(attempt: AttemptSummary): string {
+  return new Date(attempt.submitted_at * 1000).toLocaleString()
+}

@@ -113,6 +113,7 @@ describe('learning API client', () => {
       ...summary,
       answers: [{ question_id: 1, option_id: 2, text: null }],
       result: { results: [] },
+      quiz_changed: false,
     }
     const fetch = vi
       .fn()

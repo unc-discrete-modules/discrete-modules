@@ -602,6 +602,11 @@ export interface components {
             /** Answers */
             answers: components["schemas"]["AttemptAnswer"][];
             result: components["schemas"]["SubmissionResult"];
+            /**
+             * Quiz Changed
+             * @description True when questions or options were archived, added or reworded since the attempt, so the review is incomplete. Edited prompts and answer keys cannot be detected.
+             */
+            quiz_changed: boolean;
         };
         /** AttemptSummary */
         AttemptSummary: {
