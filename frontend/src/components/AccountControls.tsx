@@ -1,14 +1,29 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/auth-context-value'
 import { Button } from './ui/button'
 import { SquareText } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
+import { TutorialDialog } from './TutorialDialog'
 
 export default function AccountControls() {
   const { state, logout } = useAuth()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
+  const [tutorialOpen, setTutorialOpen] = useState(false)
+  const userId = state.status === 'authenticated' ? state.user.id : null
+
+  useEffect(() => {
+    if (userId === null) return
+
+    const key = `dm:tutorial-seen:${userId}`
+    try {
+      if (localStorage.getItem(key) === 'true') return
+      localStorage.setItem(key, 'true')
+    } catch {}
+    setTutorialOpen(true)
+  }, [userId])
+
   if (state.status !== 'authenticated') return null
   return (
     <header className="flex flex-wrap items-center justify-end gap-3 border-b p-4">
@@ -18,6 +33,7 @@ export default function AccountControls() {
           <Button
             variant="outline"
             className="rounded-full border-2 text-muted-navy"
+            onClick={() => setTutorialOpen(true)}
           >
             <SquareText></SquareText>
           </Button>
@@ -41,6 +57,7 @@ export default function AccountControls() {
           </TooltipContent>
         </Tooltip>
       </Link>
+      <TutorialDialog open={tutorialOpen} onOpenChange={setTutorialOpen} />
       <Button
         variant="outline"
         disabled={pending}
