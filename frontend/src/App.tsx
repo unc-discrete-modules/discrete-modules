@@ -17,6 +17,7 @@ import ModuleEdit from './pages/ModuleEdit'
 import AdminHome from './pages/AdminHome'
 import NotFound from './pages/NotFound'
 import ModuleStart from './pages/ModuleStart'
+import FAQ from './pages/FAQ'
 
 function LearningLayout() {
   const { state } = useAuth()
@@ -75,6 +76,7 @@ function App() {
                     path="/edit-module/:moduleId/create-quiz"
                     element={<QuizCreation />}
                   />
+                  <Route path="/faq" element={<FAQ />} />
                 </Route>
               </Route>
             </Route>

@@ -8,9 +8,16 @@ const user = { id: 1, email: 'student@example.unc.edu', csrf_token: 'csrf' }
 const json = (value: unknown, status = 200) =>
   new Response(JSON.stringify(value), { status })
 
+async function dismissTutorial() {
+  fireEvent.click(
+    await screen.findByRole('button', { name: "Let's get started!" }),
+  )
+}
+
 describe('Authentication', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/')
+    window.localStorage.clear()
     vi.stubGlobal(
       'matchMedia',
       vi.fn().mockReturnValue({
@@ -65,6 +72,7 @@ describe('Authentication', () => {
     )
     vi.stubGlobal('fetch', fetch)
     render(<App />)
+    await dismissTutorial()
     expect(
       await screen.findByRole('heading', { name: /Welcome back,/ }),
     ).toBeInTheDocument()
@@ -137,6 +145,7 @@ describe('Authentication', () => {
     })
     vi.stubGlobal('fetch', fetch)
     render(<App />)
+    await dismissTutorial()
     expect(
       await screen.findByRole('heading', { name: 'Module 2' }),
     ).toBeInTheDocument()
@@ -156,7 +165,8 @@ describe('Authentication', () => {
     )
     vi.stubGlobal('fetch', fetch)
     render(<App />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }))
+    await dismissTutorial()
+    fireEvent.click(await screen.findByRole('button', { name: /sign out/i }))
     expect(
       await screen.findByRole('link', { name: 'Sign in with UNC' }),
     ).toBeInTheDocument()
@@ -186,12 +196,13 @@ describe('Authentication', () => {
       ),
     )
     render(<App />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }))
+    await dismissTutorial()
+    fireEvent.click(await screen.findByRole('button', { name: /sign out/i }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Could not sign out',
     )
     expect(screen.getByText(user.email)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Sign out' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /sign out/i })).toBeEnabled()
   })
 
   it('clears private state and returns to login when an API session expires', async () => {
@@ -206,6 +217,7 @@ describe('Authentication', () => {
       ),
     )
     render(<App />)
+    await dismissTutorial()
     await screen.findByRole('heading', { name: /Welcome back,/ })
     await act(async () => {
       await apiFetch('/lessons/1')
@@ -226,6 +238,10 @@ describe('Authentication', () => {
 })
 
 describe('Demo login', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
   afterEach(() => {
     cleanup()
     vi.unstubAllGlobals()
@@ -265,6 +281,7 @@ describe('Demo login', () => {
       fireEvent.click(
         await screen.findByRole('button', { name: 'Sign in as demo user' }),
       )
+      await dismissTutorial()
       expect(await screen.findByText('demo@example.test')).toBeInTheDocument()
       expect(fetch).toHaveBeenCalledWith(
         '/api/auth/dev-login',
