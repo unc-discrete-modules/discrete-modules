@@ -127,6 +127,10 @@ function QuizAttempt() {
       <h1 className="text-4xl font-semibold text-slate-700">
         Module {moduleId} Quiz
       </h1>
+      <h4 className="py-3 text-sm text-gray-500">
+        For multiple choice questions, select one. For free response questions,
+        type in your answer. You can view feedback upon submission.
+      </h4>
       {auth.status === 'authenticated' ? (
         <AttemptHistory quizId={quiz.id} onReview={reviewAttempt} />
       ) : null}
