@@ -21,7 +21,7 @@ export function TutorialDialog({ open, onOpenChange }: TutorialDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-md sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="px-2 pt-5 text-xl">Welcome!</DialogTitle>
+          <DialogTitle className="px-7 pt-5 text-xl">Welcome!</DialogTitle>
         </DialogHeader>
         <div className="px-2 pt-2 text-md">
           {state.user?.role === 'admin' && (

@@ -7,6 +7,7 @@ import { Badge } from './ui/badge'
 import { Link } from 'react-router-dom'
 import { useModule } from '@/hooks/use-modules'
 import { useProgress } from '@/context/progress-context-value'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
 type ModuleCardProps = {
   module: ModuleSummary
@@ -50,9 +51,17 @@ export default function ModuleCard({ module }: ModuleCardProps) {
             <span className="text-sm text-muted-foreground">No lessons</span>
           ) : (
             <>
-              <Label className="shrink-0 text-sm text-muted-foreground">
-                Progress
-              </Label>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Label className="shrink-0 text-sm text-muted-foreground">
+                    Progress
+                  </Label>
+                </TooltipTrigger>
+                <TooltipContent className="bg-muted-navy font-semibold *:last:invisible">
+                  You have completed {percentage}% of this module.
+                </TooltipContent>
+              </Tooltip>
+
               <Progress
                 value={percentage ?? 0}
                 className="flex-1"
